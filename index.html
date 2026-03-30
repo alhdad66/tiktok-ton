@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tik Ton Pro - منصة الحداد</title>
+    <title>Tik Ton Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -12,29 +12,22 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Cairo', sans-serif; color: white; overflow: hidden; }
-        .swiper { width: 100%; height: 100vh; }
-        .swiper-slide { position: relative; background: #000; }
-        .video-wrapper { width: 100%; height: 100%; pointer-events: none; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.95)); display: flex; justify-content: space-around; padding: 15px 0; z-index: 1000; }
-        .action-btns { position: absolute; right: 12px; bottom: 150px; display: flex; flex-direction: column; gap: 18px; align-items: center; z-index: 50; }
-        .owner-img { width: 52px; height: 52px; border-radius: 50%; border: 2px solid #ef4444; padding: 2px; background: #000; cursor: pointer; pointer-events: auto; }
-        .stat-badge { background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); padding: 4px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); font-size: 10px; }
-        .page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; flex-direction: column; }
+        .swiper { width: 100%; height: 100vh; z-index: 10; }
+        .swiper-slide { position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
+        .video-wrapper { width: 100%; height: 80vh; pointer-events: none; z-index: 5; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: space-around; padding: 15px 0; z-index: 9999; border-top: 1px solid #222; }
+        .action-btns { position: absolute; right: 15px; bottom: 150px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 100; }
+        .owner-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ef4444; cursor: pointer; pointer-events: auto; object-cover: cover; }
+        .page { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; flex-direction: column; }
         .active-page { display: flex !important; }
-        /* شاشة التداول (Ticker) */
-        .crypto-ticker { background: #0a0a0a; border-bottom: 1px solid #1a1a1a; padding: 10px; display: flex; gap: 20px; overflow: hidden; white-space: nowrap; }
-        .ticker-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; }
-        .up-green { color: #10b981; }
+        .balance-chip { position: fixed; top: 20px; left: 20px; z-index: 10000; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة التوازن -->
-    <div class="fixed top-6 left-6 z-[3000] flex flex-col gap-1">
-        <div class="bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span id="mainBal" class="text-green-400 font-black text-lg">$0.0000</span>
-        </div>
+    <!-- التوازن العلوي ثابت -->
+    <div class="balance-chip">
+        <span id="mainBal" class="text-green-400 font-black text-lg">$0.0000</span>
     </div>
 
     <!-- الصفحة الرئيسية -->
@@ -44,66 +37,39 @@
         </div>
     </div>
 
-    <!-- صفحة النشر الاحترافية (شاشة التداول) -->
-    <div id="publishPage" class="page">
-        <div class="crypto-ticker">
-            <div class="ticker-item"><span class="text-gray-500">Live Views:</span> <span class="up-green" id="totalViews">12.5K</span></div>
-            <div class="ticker-item"><span class="text-gray-500">Global Ads:</span> <span class="text-blue-400">$4,201.20</span></div>
-            <div class="ticker-item"><span class="text-gray-500">Users:</span> <span class="up-green">+104</span></div>
+    <!-- صفحة النشر -->
+    <div id="publishPage" class="page p-6">
+        <h2 class="text-3xl font-black mt-12 mb-6 text-red-500">مركز النشر 🚀</h2>
+        <div class="bg-white/5 p-6 rounded-3xl border border-white/10">
+            <input id="ytInput" type="text" placeholder="ضع رابط الفيديو هنا..." class="w-full bg-black border border-white/10 p-4 rounded-xl text-white mb-4 text-left outline-none">
+            <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-xl font-black text-xl shadow-lg active:scale-95 transition-all">نشر الآن</button>
         </div>
-        <div class="p-8 flex-1 overflow-y-auto">
-            <h1 class="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-l from-red-500 to-orange-400">مركز البث 📡</h1>
-            <p class="text-gray-500 text-sm mb-8">تحكم في فيديوهاتك وراقب الأداء لحظياً.</p>
-            
-            <div class="bg-white/5 border border-white/10 p-6 rounded-3xl mb-6">
-                <label class="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">رابط فيديو يوتيوب</label>
-                <input id="ytInput" type="text" placeholder="https://youtube.com/..." class="w-full bg-black border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-red-600 transition-all text-left mb-4">
-                <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-2xl font-black text-xl shadow-2xl shadow-red-600/30 active:scale-95">نشر الآن</button>
-            </div>
+        <button onclick="switchTab('home')" class="mt-6 text-gray-500 w-full">رجوع</button>
+    </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[10px] text-gray-500 uppercase">نشاطك</p>
-                    <p class="text-xl font-bold mt-1" id="myPubs">0</p>
-                </div>
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[10px] text-gray-500 uppercase">مرات الظهور</p>
-                    <p class="text-xl font-bold mt-1 text-blue-400">842</p>
-                </div>
-            </div>
+    <!-- صفحة الملف الشخصي لناشر الفيديو -->
+    <div id="viewUserPage" class="page items-center justify-center p-6">
+        <div class="bg-white/5 border border-white/10 p-10 rounded-[3rem] w-full max-w-xs text-center">
+            <img id="viewUserImg" src="" class="w-24 h-24 rounded-full border-4 border-red-600 mx-auto mb-4">
+            <h3 id="viewUserName" class="text-2xl font-black mb-6 text-white tracking-tight">...</h3>
+            <button onclick="switchTab('home')" class="w-full py-4 bg-white/10 rounded-2xl font-bold">إغلاق</button>
         </div>
     </div>
 
-    <!-- ملف شخصي (User Profile View) -->
-    <div id="viewUserPage" class="page p-8 items-center justify-center">
-        <div class="w-full max-w-sm bg-white/5 rounded-[3rem] p-8 border border-white/10 text-center relative overflow-hidden">
-             <div class="absolute -top-10 -left-10 w-32 h-32 bg-red-600/10 blur-3xl"></div>
-             <img id="viewUserImg" src="" class="w-24 h-24 rounded-full border-4 border-red-600 mx-auto mb-4 object-cover">
-             <h3 id="viewUserName" class="text-2xl font-black mb-6">...</h3>
-             <div class="grid grid-cols-2 gap-2 mb-6">
-                 <div class="bg-black/40 py-3 rounded-2xl"><p class="text-[10px] text-gray-500">فيديوهات</p><p class="font-bold">12</p></div>
-                 <div class="bg-black/40 py-3 rounded-2xl"><p class="text-[10px] text-gray-500">مشاهدات</p><p class="font-bold">1.2K</p></div>
-             </div>
-             <button onclick="switchTab('home')" class="w-full py-4 bg-white/10 rounded-2xl font-bold">إغلاق</button>
+    <!-- حسابي -->
+    <div id="profilePage" class="page items-center justify-center p-6 text-center">
+        <img id="tgPhoto" src="" class="w-24 h-24 rounded-full border-4 border-red-600 mb-4 mx-auto">
+        <h2 id="tgName" class="text-2xl font-black text-white mb-6 tracking-tight">...</h2>
+        <div class="bg-green-500/10 p-8 rounded-[2rem] w-full border border-green-500/20">
+             <p class="text-xs text-gray-400 uppercase font-bold mb-1">الرصيد الحالي</p>
+             <p id="profBal" class="text-5xl font-black text-green-400 tracking-tighter">$0.0000</p>
         </div>
     </div>
 
-    <!-- صفحة الحساب الشخصي -->
-    <div id="profilePage" class="page p-8 items-center justify-center">
-        <img id="tgPhoto" src="" class="w-28 h-28 rounded-full border-4 border-red-600 mb-4 shadow-2xl">
-        <h2 id="tgName" class="text-2xl font-black mb-6 text-white">تحميل...</h2>
-        <div class="bg-white/5 w-full p-8 rounded-[2.5rem] border border-white/10 text-center mb-8 relative">
-            <div class="absolute top-4 right-6 bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold">نشط الآن</div>
-            <p class="text-xs text-gray-500 mb-2 font-bold uppercase">الرصيد المتاح</p>
-            <p id="profBal" class="text-5xl font-black text-green-400 tracking-tighter">$0.0000</p>
-        </div>
-        <button onclick="alert('السحب متاح عند 5$')" class="w-full bg-green-600 py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-600/20">طلب سحب فوري</button>
-    </div>
-
-    <!-- التنقل -->
+    <!-- شريط التنقل السفلي -->
     <div class="nav-bar">
         <button onclick="switchTab('home')" class="text-2xl">🏠</button>
-        <button onclick="switchTab('publish')" class="bg-red-600 px-6 py-1 rounded-xl font-black text-2xl shadow-lg">+</button>
+        <button onclick="switchTab('publish')" class="bg-red-600 px-6 py-1 rounded-xl font-black text-2xl">+</button>
         <button onclick="switchTab('profile')" class="text-2xl opacity-50">👤</button>
     </div>
 
@@ -120,70 +86,59 @@
         const db = firebase.firestore();
 
         const tg = window.Telegram.WebApp;
-        const userData = tg.initDataUnsafe?.user || { id: "test", first_name: "ضيف", photo_url: "" };
+        tg.expand();
+        const userData = tg.initDataUnsafe?.user || { id: "test_dev", first_name: "مستخدم", photo_url: "https://via.placeholder.com/150" };
         const uID = String(userData.id);
 
-        let balance = 0, players = {}, swiper, fullPlaylist = [];
+        let balance = 0, players = {}, swiper, videos = [];
 
-        async function loadVideos() {
-            const snap = await db.collection("shared_videos").orderBy("createdAt", "desc").get();
-            fullPlaylist = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderContent();
+        async function loadData() {
+            const snap = await db.collection("shared_videos").orderBy("createdAt", "desc").limit(20).get();
+            videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            if(videos.length === 0) videos = [{videoId: "dQw4w9WgXcQ", ownerName: "الحداد", ownerImg: "https://via.placeholder.com/150"}];
+            render();
         }
 
-        function renderContent() {
+        function render() {
             const wrapper = document.getElementById('videoWrapper');
             wrapper.innerHTML = '';
-            fullPlaylist.forEach((item, index) => {
+            videos.forEach((v, i) => {
                 wrapper.innerHTML += `
-                    <div class="swiper-slide">
-                        <div id="player-${index}" class="video-wrapper"></div>
-                        <div class="action-btns">
-                            <img src="${item.ownerImg || 'https://via.placeholder.com/50'}" 
-                                 class="owner-img" 
-                                 onclick="viewUser('${item.ownerName}', '${item.ownerImg}')">
-                            <div class="flex flex-col items-center"><span class="text-xl">❤️</span><span class="text-[9px]">${Math.floor(Math.random()*500)}</span></div>
-                            <div class="flex flex-col items-center"><span class="text-xl">💬</span><span class="text-[9px]">${Math.floor(Math.random()*100)}</span></div>
-                        </div>
-                        <div class="absolute bottom-28 right-6 text-right">
-                            <h3 class="font-black text-lg">@${item.ownerName || 'Unknown'}</h3>
-                            <div class="flex gap-2 mt-1">
-                                <span class="stat-badge">LIVE 🔴</span>
-                                <span class="stat-badge">REWARD 💰</span>
-                            </div>
-                        </div>
-                    </div>`;
+                <div class="swiper-slide">
+                    <div id="player-${i}" class="video-wrapper"></div>
+                    <div class="action-btns">
+                        <img src="${v.ownerImg || 'https://via.placeholder.com/50'}" class="owner-img" onclick="viewUser('${v.ownerName}', '${v.ownerImg}')">
+                        <span class="text-2xl">❤️</span>
+                        <span class="text-2xl font-bold">💬</span>
+                    </div>
+                    <div class="absolute bottom-24 right-6 text-right z-50">
+                        <h3 class="font-black text-lg">@${v.ownerName || 'Unknown'}</h3>
+                        <p class="text-xs text-gray-400">شاهد الفيديو للربح 💰</p>
+                    </div>
+                </div>`;
             });
 
             swiper = new Swiper(".mySwiper", {
                 direction: "vertical",
-                on: {
-                    slideChange: function() {
-                        stopAll();
-                        playCurrent(this.activeIndex);
-                    }
-                }
+                on: { slideChange: () => { stopAll(); playCurrent(swiper.activeIndex); } }
             });
             setTimeout(initPlayers, 500);
         }
 
         function initPlayers() {
-            fullPlaylist.forEach((item, idx) => {
-                players[idx] = new YT.Player(`player-${idx}`, {
-                    videoId: item.videoId,
-                    playerVars: { autoplay: idx === 0 ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
+            videos.forEach((v, i) => {
+                players[i] = new YT.Player(`player-${i}`, {
+                    videoId: v.videoId,
+                    playerVars: { autoplay: i === 0 ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
                     events: {
                         onStateChange: (e) => {
-                            // منع الغش: يجب أن يشاهد المستخدم 10 ثواني على الأقل أو ينتهي الفيديو
-                            if(e.data === YT.PlayerState.PLAYING) {
-                                if(!e.target.rewarded) {
-                                    setTimeout(() => {
-                                        if(e.target.getPlayerState() === YT.PlayerState.PLAYING) {
-                                            e.target.rewarded = true;
-                                            addEarn(0.0005);
-                                        }
-                                    }, 10000); // 10 ثواني لمكافحة الغش
-                                }
+                            if(e.data === YT.PlayerState.PLAYING && !e.target.isRewarded) {
+                                setTimeout(() => {
+                                    if(e.target.getPlayerState() === YT.PlayerState.PLAYING) {
+                                        e.target.isRewarded = true;
+                                        addMoney(0.0005);
+                                    }
+                                }, 10000);
                             }
                         }
                     }
@@ -194,29 +149,29 @@
         function stopAll() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); }
         function playCurrent(i) { if(players[i]) players[i].playVideo(); }
 
-        async function addEarn(amt) {
+        async function addMoney(amt) {
             balance += amt;
             updateUI();
             await db.collection("users").doc(uID).set({ balance: balance, name: userData.first_name, photo: userData.photo_url }, { merge: true });
         }
 
         function updateUI() {
-            const f = `$${balance.toFixed(4)}`;
-            document.getElementById('mainBal').innerText = f;
-            document.getElementById('profBal').innerText = f;
+            const txt = `$${balance.toFixed(4)}`;
+            document.getElementById('mainBal').innerText = txt;
+            document.getElementById('profBal').innerText = txt;
         }
 
         function viewUser(name, img) {
-            document.getElementById('viewUserName').innerText = name;
-            document.getElementById('viewUserImg').src = img || 'https://via.placeholder.com/150';
+            document.getElementById('viewUserName').innerText = name || "Unknown";
+            document.getElementById('viewUserImg').src = img || "https://via.placeholder.com/150";
             switchTab('viewUser');
         }
 
         function switchTab(t) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
             if(t === 'home') document.getElementById('homePage').classList.add('active-page');
-            if(t === 'profile') document.getElementById('profilePage').classList.add('active-page');
             if(t === 'publish') document.getElementById('publishPage').classList.add('active-page');
+            if(t === 'profile') document.getElementById('profilePage').classList.add('active-page');
             if(t === 'viewUser') document.getElementById('viewUserPage').classList.add('active-page');
             if(t !== 'home') stopAll(); else playCurrent(swiper.activeIndex);
         }
@@ -224,28 +179,27 @@
         async function handlePublish() {
             const url = document.getElementById('ytInput').value;
             const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if(vidId) {
-                await db.collection("shared_videos").add({
-                    videoId: vidId, 
-                    createdAt: new Date(),
-                    ownerId: uID,
-                    ownerName: userData.first_name,
-                    ownerImg: userData.photo_url
-                });
-                alert('تم النشر بنجاح!');
-                location.reload();
-            }
+            if(!vidId) return alert('الرابط غير صحيح');
+            
+            await db.collection("shared_videos").add({
+                videoId: vidId,
+                createdAt: new Date(),
+                ownerId: uID,
+                ownerName: userData.first_name,
+                ownerImg: userData.photo_url
+            });
+            alert('تم النشر!');
+            location.reload();
         }
 
         window.onload = async () => {
             document.getElementById('tgName').innerText = userData.first_name;
             document.getElementById('tgPhoto').src = userData.photo_url || 'https://via.placeholder.com/150';
-            await loadVideos();
-            const doc = await db.collection("users").doc(uID).get();
-            if(doc.exists) { balance = doc.data().balance || 0; updateUI(); }
-            document.getElementById('totalViews').innerText = (Math.random() * 20).toFixed(1) + "K";
+            await loadData();
+            const d = await db.collection("users").doc(uID).get();
+            if(d.exists) { balance = d.data().balance || 0; updateUI(); }
         };
-        function onYouTubeIframeAPIReady() {}
+        function onYouTubeIframeAPIReady(){}
     </script>
 </body>
 </html>
