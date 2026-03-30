@@ -4,121 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tik Ton - منصة الحداد</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- استيراد مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body, html { 
-            margin: 0; padding: 0; height: 100%; 
-            background-color: #000; overflow: hidden; 
-            font-family: 'Cairo', sans-serif; color: white; 
-        }
-        .page { 
-            position: absolute; inset: 0; display: none; 
-            flex-direction: column; background: #000; z-index: 10; 
-            padding-bottom: 80px; 
-        }
+        body, html { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; font-family: 'Cairo', sans-serif; color: white; }
+        .page { position: absolute; inset: 0; display: none; flex-direction: column; background: #000; z-index: 10; padding-bottom: 80px; }
         .active-page { display: flex !important; z-index: 50 !important; }
-        .nav-bar { 
-            position: fixed; bottom: 0; width: 100%; 
-            background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(15px); 
-            display: flex; justify-content: space-around; 
-            padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); 
-            z-index: 100; 
-        }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #666; cursor: pointer; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #555; }
         .nav-item.active { color: #fff; }
-        .plus-btn { 
-            background: #ef4444; padding: 5px 20px; 
-            border-radius: 12px; color: white; 
-            font-weight: bold; font-size: 24px; margin-top: -8px; 
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-        }
-        #player { width: 100%; height: 100%; }
-        .loading-screen {
-            position: fixed; inset: 0; background: #000;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 9999;
-        }
+        .plus-btn { background: #ff0000; padding: 5px 18px; border-radius: 12px; color: #white; font-weight: bold; font-size: 24px; margin-top: -5px; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة التحميل -->
-    <div id="loader" class="loading-screen">
-        <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-red-600 mb-4 mx-auto"></div>
-            <p class="text-sm font-bold">جاري الاتصال بالسيرفر...</p>
-        </div>
-    </div>
-
-    <!-- الصفحة الرئيسية: مشاهدة يوتيوب -->
     <div id="homePage" class="page active-page">
-        <div class="fixed top-10 w-full flex justify-between px-6 z-20 items-center">
+        <div class="fixed top-8 w-full flex justify-between px-6 z-20 items-center">
             <div class="bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
                 <p id="mainBalance" class="text-lg font-black text-green-400">$0.0000</p>
             </div>
-            <button onclick="loadNextVideo()" class="bg-red-600 px-5 py-2 rounded-full font-bold text-sm shadow-lg active:scale-90 transition-all">التالي ⏭️</button>
+            <button onclick="nextVideo()" class="bg-red-600 px-4 py-2 rounded-full font-bold text-xs">التالي ⏭️</button>
         </div>
-        
         <div id="player"></div>
-        
-        <div class="fixed bottom-28 w-full text-center pointer-events-none px-4">
-            <p id="videoTitle" class="text-xs text-white/60 truncate mb-1">تحميل الفيديو...</p>
-            <p class="text-[10px] text-white/30">شاهد للنهاية أو اضغط "التالي" للربح</p>
-        </div>
     </div>
 
-    <!-- صفحة النشر: إضافة رابط يوتيوب -->
-    <div id="uploadPage" class="page p-6 bg-gradient-to-b from-black to-red-950/30 text-right">
-        <h2 class="text-3xl font-black mt-12 mb-6 text-red-500">انشر فيديوك 🚀</h2>
-        <div class="bg-white/5 border border-white/10 p-5 rounded-2xl mb-8">
-            <p class="text-sm text-gray-300 leading-relaxed">ضع رابط فيديوك من يوتيوب هنا، وسيقوم النظام بعرضه للمستخدمين الآخرين لزيادة مشاهداتك الحقيقية.</p>
-        </div>
-        
-        <div class="flex flex-col gap-4">
-            <label class="text-xs text-gray-500 mr-2">رابط فيديو يوتيوب:</label>
-            <input id="ytUrlInput" type="text" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-red-500 text-left">
-            <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-xl font-black text-lg shadow-xl active:scale-95 transition-all">نشر الآن للجميع</button>
-        </div>
+    <div id="uploadPage" class="page p-6 text-right">
+        <h2 class="text-3xl font-black mt-12 mb-6">انشر فيديو 🚀</h2>
+        <input id="ytUrl" type="text" placeholder="رابط يوتيوب هنا..." class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white mb-4">
+        <button onclick="publish()" class="w-full bg-red-600 py-4 rounded-xl font-black">نشر للجميع</button>
     </div>
 
-    <!-- صفحة الحساب الشخصي -->
     <div id="profilePage" class="page p-6 text-center">
-        <div class="mt-16 mb-10 flex flex-col items-center">
-            <div class="w-24 h-24 bg-gradient-to-tr from-red-600 to-red-400 rounded-full flex items-center justify-center text-5xl mb-4 shadow-2xl border-4 border-black">👤</div>
-            <h2 class="text-2xl font-black text-white">حساب المبدع</h2>
-            <div class="mt-6 bg-green-500/10 border border-green-500/20 p-8 rounded-[2rem] w-full">
-                <p class="text-xs text-gray-400 mb-2 font-bold">إجمالي الأرباح</p>
+        <div class="mt-16 flex flex-col items-center">
+            <img id="userImg" src="" class="w-24 h-24 rounded-full border-4 border-red-600 mb-4 hidden">
+            <div id="userIcon" class="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center text-4xl mb-4">👤</div>
+            <h2 id="userName" class="text-xl font-black">مستخدم تلجرام</h2>
+            <div class="mt-6 bg-green-500/10 p-6 rounded-3xl w-full">
                 <p id="profBalance" class="text-4xl font-black text-green-400">$0.0000</p>
             </div>
         </div>
-        <button onclick="showWithdraw()" class="w-full bg-green-600 py-5 rounded-2xl font-black mb-4 shadow-lg active:scale-95">💳 سحب الأموال</button>
-        <p class="text-[10px] text-gray-500">الحد الأدنى للسحب هو 5.00$</p>
     </div>
 
-    <!-- شريط التنقل السفلي -->
     <div class="nav-bar">
-        <div class="nav-item active" onclick="switchPage('homePage', this)">
-            <span class="text-2xl">🏠</span>
-            <span class="text-[9px] font-bold">الرئيسية</span>
-        </div>
-        <div class="nav-item" onclick="switchPage('uploadPage', this)">
-            <div class="plus-btn">+</div>
-            <span class="text-[9px] font-bold">نشر</span>
-        </div>
-        <div class="nav-item" onclick="switchPage('profilePage', this)">
-            <span class="text-2xl">👤</span>
-            <span class="text-[9px] font-bold">حسابي</span>
-        </div>
+        <div class="nav-item active" onclick="tabs('homePage', this)">🏠</div>
+        <div class="nav-item" onclick="tabs('uploadPage', this)"><div class="plus-btn">+</div></div>
+        <div class="nav-item" onclick="tabs('profilePage', this)">👤</div>
     </div>
 
-    <!-- YouTube & Firebase Scripts -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        // إعدادات Firebase الخاصة بـ عبود
         const firebaseConfig = {
             apiKey: "AIzaSyDyav3T7_ar6Bq_wpHiUasF7rIqM3_S0A",
             authDomain: "tik-ton-92124.firebaseapp.com",
@@ -127,126 +64,75 @@
             messagingSenderId: "885830196454",
             appId: "1:885830196454:web:a18a778644558e0a8ec9ec"
         };
-
-        // تهيئة Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let player;
-        let balance = 0.0;
-        let playlist = ["dQw4w9WgXcQ"]; // فيديو افتراضي في حال خلو القاعدة
-        let currentIndex = 0;
+        // بيانات تلجرام
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const user = tg.initDataUnsafe?.user || { id: "test_user", first_name: "ضيف" };
+        const userId = String(user.id);
 
-        // وظيفة استخراج معرف الفيديو
-        function getYTId(url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length == 11) ? match[2] : null;
+        let player, bal = 0, playlist = ["dQw4w9WgXcQ"], idx = 0;
+
+        // جلب الفيديوهات
+        async function getVids() {
+            const snap = await db.collection("shared_videos").get();
+            if(!snap.empty) playlist = snap.docs.map(d => d.data().videoId);
         }
 
-        // جلب الفيديوهات المنشورة من قبل المستخدمين
-        async function fetchVideos() {
-            try {
-                const snapshot = await db.collection("shared_videos").orderBy("createdAt", "desc").get();
-                if(!snapshot.empty) {
-                    playlist = snapshot.docs.map(doc => doc.data().videoId);
-                }
-            } catch(e) { console.error("Error fetching videos:", e); }
-        }
-
-        // إعداد مشغل يوتيوب
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: playlist[currentIndex],
-                playerVars: { 
-                    'autoplay': 1, 
-                    'controls': 1, 
-                    'modestbranding': 1, 
-                    'rel': 0,
-                    'playsinline': 1
-                },
-                events: {
-                    'onReady': () => document.getElementById('loader').style.display = 'none',
-                    'onStateChange': (e) => {
-                        if(e.data == YT.PlayerState.ENDED) {
-                            addProfit(0.0010); // ربح أعلى عند إكمال الفيديو
-                        }
-                    }
-                }
+                height: '100%', width: '100%', videoId: playlist[idx],
+                playerVars: {'autoplay':1, 'controls':1, 'playsinline':1},
+                events: {'onStateChange': (e) => { if(e.data == 0) earn(0.0010); }}
             });
         }
 
-        // إضافة الربح وحفظه
-        async function addProfit(amount) {
-            balance += amount;
-            updateUI();
-            try {
-                await db.collection("users").doc("main_user").set({
-                    balance: balance,
-                    lastUpdate: new Date()
-                }, { merge: true });
-            } catch(e) { console.error(e); }
+        async function earn(a) {
+            bal += a; updateUI();
+            await db.collection("users").doc(userId).set({ balance: bal, name: user.first_name }, { merge: true });
         }
 
-        function loadNextVideo() {
-            currentIndex = (currentIndex + 1) % playlist.length;
-            player.loadVideoById(playlist[currentIndex]);
-            addProfit(0.0005); // ربح بسيط عند التخطي
+        function nextVideo() {
+            idx = (idx + 1) % playlist.length;
+            player.loadVideoById(playlist[idx]);
+            earn(0.0005);
         }
 
-        // نشر فيديو جديد
-        async function handlePublish() {
-            const url = document.getElementById('ytUrlInput').value;
-            const vidId = getYTId(url);
-            
+        async function publish() {
+            const url = document.getElementById('ytUrl').value;
+            const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
             if(vidId) {
-                document.getElementById('loader').style.display = 'flex';
-                try {
-                    await db.collection("shared_videos").add({
-                        videoId: vidId,
-                        createdAt: new Date(),
-                        user: "anonymous"
-                    });
-                    alert('✅ تم نشر فيديوك بنجاح! سيظهر الآن لجميع المستخدمين.');
-                    document.getElementById('ytUrlInput').value = '';
-                    location.reload(); // إعادة تحميل لجلب الفيديوهات الجديدة
-                } catch(e) {
-                    alert('خطأ في النشر، حاول ثانية');
-                }
-            } else {
-                alert('❌ يرجى التأكد من صحة رابط يوتيوب');
+                await db.collection("shared_videos").add({ videoId: vidId, createdAt: new Date() });
+                alert('تم النشر!'); location.reload();
             }
         }
 
-        function switchPage(pageId, navEl) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            document.getElementById(pageId).classList.add('active-page');
+        function tabs(p, el) {
+            document.querySelectorAll('.page').forEach(x => x.classList.remove('active-page'));
+            document.getElementById(p).classList.add('active-page');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            if(navEl) navEl.classList.add('active');
-            
-            if(pageId === 'homePage') player.playVideo(); else player.pauseVideo();
+            el.classList.add('active');
         }
 
         function updateUI() {
-            const formatted = `$${balance.toFixed(4)}`;
-            document.getElementById('mainBalance').innerText = formatted;
-            document.getElementById('profBalance').innerText = formatted;
+            const v = `$${bal.toFixed(4)}`;
+            document.getElementById('mainBalance').innerText = v;
+            document.getElementById('profBalance').innerText = v;
         }
 
-        function showWithdraw() {
-            alert('طلبك قيد المراجعة. سيتم التواصل معك عند وصولك للحد الأدنى (5$).');
-        }
-
-        // بدء التطبيق
         window.onload = async () => {
-            await fetchVideos();
-            const userDoc = await db.collection("users").doc("main_user").get();
-            if(userDoc.exists) {
-                balance = userDoc.data().balance || 0;
-                updateUI();
+            await getVids();
+            // عرض بيانات تلجرام
+            document.getElementById('userName').innerText = user.first_name;
+            if(user.photo_url) {
+                document.getElementById('userImg').src = user.photo_url;
+                document.getElementById('userImg').classList.remove('hidden');
+                document.getElementById('userIcon').classList.add('hidden');
             }
+            const doc = await db.collection("users").doc(userId).get();
+            if(doc.exists) { bal = doc.data().balance || 0; updateUI(); }
         };
     </script>
 </body>
