@@ -3,180 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منصة الحداد - El Haddad</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Tik Ton - منصة الحداد</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        
-        body, html { 
-            margin: 0; padding: 0; height: 100%; 
-            background-color: #000; overflow: hidden; 
-            font-family: 'Cairo', sans-serif;
-            color: white;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .page { 
-            position: absolute; inset: 0; display: none; 
-            flex-direction: column; background: #000; z-index: 10; padding-bottom: 85px; 
-        }
-
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #000; overflow: hidden; font-family: 'Cairo', sans-serif; color: white; }
+        .page { position: absolute; inset: 0; display: none; flex-direction: column; background: #000; z-index: 10; padding-bottom: 80px; }
         .active-page { display: flex !important; z-index: 50 !important; }
-
         .video-player { width: 100%; height: 100%; object-fit: cover; background: #000; }
-
-        .nav-bar { 
-            position: fixed; bottom: 0; width: 100%; 
-            background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(15px);
-            display: flex; justify-content: space-around; padding: 15px 0; 
-            border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; 
-        }
-        
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #555; cursor: pointer; }
-        .nav-item.active { color: #fff; }
-
-        .user-avatar-main {
-            width: 110px; height: 110px; border-radius: 50%;
-            border: 4px solid #2563eb; object-fit: cover;
-            background: #111; display: flex; align-items: center; justify-content: center;
-            font-size: 45px; margin-bottom: 15px;
-            box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
-        }
-
-        #earn-anim {
-            position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%);
-            background: #22c55e; color: white; padding: 12px 30px; 
-            border-radius: 50px; font-weight: 900; display: none; z-index: 200;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #666; cursor: pointer; transition: 0.3s; }
+        .nav-item.active { color: #fff; transform: scale(1.1); }
+        .plus-btn { background: #2563eb; padding: 5px 18px; border-radius: 12px; color: white; font-weight: bold; font-size: 22px; margin-top: -5px; }
     </style>
 </head>
 <body>
 
-    <div id="earn-anim">💰 + $0.0002</div>
-
-    <div class="relative w-full h-full">
-        
-        <div id="home" class="page active-page">
-            <div class="fixed top-12 w-full flex justify-center z-20 pointer-events-none">
-                <div class="bg-black/40 backdrop-blur-xl px-10 py-3 rounded-full border border-white/10 pointer-events-auto">
-                    <p id="main-bal" class="text-3xl font-black text-green-400">$0.0000</p>
-                </div>
-            </div>
-
-            <div class="absolute bottom-32 right-4 flex flex-col items-center z-20 gap-8">
-                <div class="relative">
-                    <img id="v-user-pic" src="" class="w-14 h-14 rounded-full border-2 border-white hidden shadow-xl">
-                    <div id="v-user-placeholder" class="w-14 h-14 rounded-full border-2 border-white bg-gray-800 flex items-center justify-center text-2xl shadow-xl">👤</div>
-                    <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#fe2c55] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border border-white">+</div>
-                </div>
-                
-                <div class="flex flex-col items-center gap-1" onclick="this.querySelector('span').innerText='❤️'">
-                    <div class="bg-black/20 p-4 rounded-full border border-white/5 backdrop-blur-md">
-                        <span class="text-3xl">🤍</span>
-                    </div>
-                    <p class="text-[10px] font-bold mt-1">إعجاب</p>
-                </div>
-            </div>
-
-            <div class="absolute bottom-32 left-4 z-20 text-right">
-                <p id="v-username" class="font-black text-xl drop-shadow-lg text-white">@username</p>
-                <p class="text-sm text-gray-200 drop-shadow-md">منصة المبدعين في ليبيا 🇱🇾</p>
-            </div>
-
-            <video id="mainVideo" class="video-player" playsinline loop muted autoplay onclick="handleEarn()">
-                <source src="https://assets.mixkit.co/videos/preview/mixkit-fashion-girl-walking-in-a-studio-34509-large.mp4">
-            </video>
-        </div>
-
-        <div id="profile" class="page p-6 bg-gradient-to-b from-gray-900 to-black">
-            <div class="mt-20 flex flex-col items-center">
-                <div id="p-avatar-box" class="user-avatar-main overflow-hidden">
-                    <img id="p-user-pic" src="" class="w-full h-full object-cover hidden">
-                    <span id="p-user-emoji">👤</span>
-                </div>
-                
-                <h2 id="p-full-name" class="text-3xl font-black text-white">جاري التحميل...</h2>
-                <p id="p-username" class="text-blue-500 font-bold tracking-widest mt-1">@username</p>
-
-                <div class="mt-12 bg-white/5 p-10 rounded-[50px] w-full border border-white/10 shadow-inner">
-                    <p class="text-[10px] text-gray-500 font-bold mb-2 uppercase tracking-widest">رصيدك الحالي</p>
-                    <p id="prof-bal" class="text-6xl font-black text-green-400 tracking-tighter">$0.0000</p>
-                </div>
-                
-                <button onclick="tg.showAlert('سيتم تحويل الأرباح عند وصولك لـ 5 دولار')" class="w-full bg-blue-600 mt-12 py-5 rounded-[30px] font-black text-xl shadow-2xl active:scale-95 transition-all">سحب الأرباح الآن</button>
+    <!-- الصفحة الرئيسية -->
+    <div id="homePage" class="page active-page">
+        <div class="fixed top-10 w-full flex justify-center z-20">
+            <div class="bg-black/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10">
+                <p id="mainBalance" class="text-xl font-black text-green-400">$0.0000</p>
             </div>
         </div>
-
+        <video id="vPlayer" class="video-player" playsinline loop muted autoplay onclick="nextVideo()">
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-fashion-girl-walking-in-a-studio-34509-large.mp4">
+        </video>
     </div>
 
+    <!-- صفحة الحساب -->
+    <div id="profilePage" class="page p-6 text-center">
+        <div class="mt-16 mb-10 flex flex-col items-center">
+            <div class="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center text-5xl mb-4 border-2 border-white/10">👤</div>
+            <h2 class="text-2xl font-black">المبدع الحداد</h2>
+            <div class="mt-6 bg-green-500/10 border border-green-500/20 p-6 rounded-3xl w-full">
+                <p class="text-xs text-gray-400 mb-1">أرباحك الحالية</p>
+                <p id="profBalance" class="text-4xl font-black text-green-400">$0.0000</p>
+            </div>
+        </div>
+        <button onclick="alert('السحب متاح عند 5$')" class="w-full bg-green-600 py-5 rounded-2xl font-black mb-4">💳 سحب الأرباح</button>
+    </div>
+
+    <!-- شريط التنقل -->
     <div class="nav-bar">
-        <div id="btn-home" class="nav-item active" onclick="switchPage('home', this)">
-            <span class="text-3xl">🏠</span><span class="text-[10px] font-bold">الرئيسية</span>
-        </div>
-        <div class="nav-item" onclick="tg.showAlert('ميزة النشر قيد المراجعة')">
-            <div class="bg-white text-black px-5 py-1 rounded-xl font-black text-2xl mt-[-8px] shadow-lg">+</div>
-            <span class="text-[10px] font-bold">انشر</span>
-        </div>
-        <div id="btn-profile" class="nav-item" onclick="switchPage('profile', this)">
-            <span class="text-3xl">👤</span><span class="text-[10px] font-bold">حسابي</span>
-        </div>
+        <div class="nav-item active" onclick="changeTab('homePage', this)">🏠</div>
+        <div class="nav-item" onclick="alert('قريباً')"><div class="plus-btn">+</div></div>
+        <div class="nav-item" onclick="changeTab('profilePage', this)">👤</div>
     </div>
 
     <script>
-        // تهيئة تليجرام
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        // إعدادات Firebase الخاصة بـ عبود
+        const firebaseConfig = {
+            apiKey: "AIzaSyDyav3T7_ar6Bq_wpHiUasF7rIqM3_S0A",
+            authDomain: "tik-ton-92124.firebaseapp.com",
+            projectId: "tik-ton-92124",
+            storageBucket: "tik-ton-92124.firebasestorage.app",
+            messagingSenderId: "885830196454",
+            appId: "1:885830196454:web:a18a778644558e0a8ec9ec"
+        };
 
-        // جلب بيانات المستخدم
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-            const name = (user.first_name + ' ' + (user.last_name || '')).trim();
-            const username = user.username ? `@${user.username}` : `User_${user.id}`;
-            
-            document.getElementById('p-full-name').innerText = name;
-            document.getElementById('p-username').innerText = username;
-            document.getElementById('v-username').innerText = username;
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-            if (user.photo_url) {
-                const pics = ['p-user-pic', 'v-user-pic'];
-                pics.forEach(id => {
-                    const el = document.getElementById(id);
-                    el.src = user.photo_url;
-                    el.classList.remove('hidden');
-                });
-                document.getElementById('p-user-emoji').classList.add('hidden');
-                document.getElementById('v-user-placeholder').classList.add('hidden');
-            }
-        }
+        let currentBalance = 0.0;
+        const videoElement = document.getElementById('vPlayer');
+        const videoSources = [
+            "https://assets.mixkit.co/videos/preview/mixkit-fashion-girl-walking-in-a-studio-34509-large.mp4",
+            "https://assets.mixkit.co/videos/preview/mixkit-man-dancing-under-neon-lights-34405-large.mp4",
+            "https://assets.mixkit.co/videos/preview/mixkit-young-woman-modelling-on-a-yellow-background-34510-large.mp4"
+        ];
+        let videoIndex = 0;
 
-        // الربح والتبديل
-        let balance = 0.0;
-        function handleEarn() {
-            balance += 0.0002;
-            const res = `$${balance.toFixed(4)}`;
-            document.getElementById('main-bal').innerText = res;
-            document.getElementById('prof-bal').innerText = res;
-            
-            const anim = document.getElementById('earn-anim');
-            anim.style.display = 'block';
-            setTimeout(() => anim.style.display = 'none', 600);
-            
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-        }
-
-        function switchPage(id, el) {
+        function changeTab(pageId, element) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            document.getElementById(id).classList.add('active-page');
+            document.getElementById(pageId).classList.add('active-page');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            el.classList.add('active');
-            
-            const vid = document.getElementById('mainVideo');
-            if(id === 'home') vid.play(); else vid.pause();
+            if(element) element.classList.add('active');
+            if(pageId === 'homePage') videoElement.play(); else videoElement.pause();
         }
+
+        async function nextVideo() {
+            videoIndex = (videoIndex + 1) % videoSources.length;
+            videoElement.src = videoSources[videoIndex];
+            videoElement.play();
+            
+            // زيادة الرصيد
+            currentBalance += 0.0005;
+            updateDisplay();
+
+            // حفظ في Firebase
+            try {
+                await db.collection("users").doc("main_user").set({
+                    balance: currentBalance,
+                    lastSeen: new Date()
+                }, { merge: true });
+            } catch (e) { console.error(e); }
+        }
+
+        function updateDisplay() {
+            const val = `$${currentBalance.toFixed(4)}`;
+            document.getElementById('mainBalance').innerText = val;
+            document.getElementById('profBalance').innerText = val;
+        }
+
+        // تحميل البيانات عند البدء
+        window.onload = async () => {
+            try {
+                const doc = await db.collection("users").doc("main_user").get();
+                if (doc.exists) {
+                    currentBalance = doc.data().balance || 0;
+                    updateDisplay();
+                }
+            } catch (e) { console.log("New User"); }
+        };
     </script>
 </body>
-  </html>
+</html>
