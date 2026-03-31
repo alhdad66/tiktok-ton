@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener - Ultra Stable</title>
+    <title>Fogrener - Debug Mode</title>
     
-    <!-- مكتبات أساسية -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -16,119 +15,129 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        .swiper { height: 100vh; width: 100vw; z-index: 10; }
+        iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
+        .touch-mask { position: absolute; inset: 0; z-index: 20; background: transparent; }
         
-        body { 
-            background: #000; 
-            color: white; 
-            font-family: 'Cairo', sans-serif; 
-            margin: 0; 
-            overflow: hidden; 
-            height: 100vh;
-            touch-action: manipulation; /* تحسين الاستجابة للمس */
+        /* Navigation */
+        .bottom-tabs { position: fixed; bottom: 0; width: 100%; height: 70px; background: #000; border-top: 1px solid #111; display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
+        .tab { display: flex; flex-direction: column; align-items: center; color: #444; font-size: 11px; }
+        .tab.active { color: #fff; }
+        .btn-add { background: #fff; width: 45px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; position: relative; }
+
+        /* Full Pages */
+        .sub-page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
+        .sub-page.active { display: flex; }
+
+        /* Debug Console - الفكرة الجهنمية */
+        #debug-console { 
+            position: fixed; bottom: 80px; left: 10px; right: 10px; 
+            height: 150px; background: rgba(0,0,0,0.9); border: 1px solid #333;
+            border-radius: 12px; z-index: 5000; font-family: monospace; 
+            font-size: 10px; color: #0f0; padding: 10px; overflow-y: auto;
+            display: none; pointer-events: auto;
         }
-        
-        .swiper { height: 100vh; width: 100vw; z-index: 1; }
-        .video-container { position: relative; height: 100%; width: 100%; background: #000; display: flex; align-items: center; }
-        
-        /* مشغل يوتيوب - وضعنا طبقة شفافة فوقه لمنع تداخل اللمس */
-        .yt-wrapper { width: 100%; aspect-ratio: 9/16; position: relative; pointer-events: none; }
-        iframe { width: 100%; height: 100%; border: none; }
-        .touch-layer { position: absolute; inset: 0; z-index: 5; background: transparent; }
-
-        /* العناصر العائمة */
-        .ui-overlay { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
-        .pointer-auto { pointer-events: auto; }
-
-        /* شريط التنقل السفلي */
-        .bottom-nav { 
-            position: fixed; bottom: 0; width: 100%; height: 75px; 
-            background: rgba(0,0,0,0.9); border-top: 1px solid #222; 
-            display: flex; justify-content: space-around; align-items: center; 
-            z-index: 1000; pointer-events: auto;
-        }
-
-        .tab-btn { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 10px; cursor: pointer; }
-        .tab-btn.active { color: #fff; }
-        .center-add { background: #fff; color: #000; width: 45px; height: 30px; border-radius: 8px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-
-        /* الصفحات */
-        .page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; padding: 20px; overflow-y: auto; }
-        .page.active { display: block; }
     </style>
 </head>
 <body>
 
-    <!-- الواجهة العلوية -->
-    <div class="ui-overlay flex justify-between p-4 items-start">
-        <div class="bg-black/60 px-4 py-1 rounded-full border border-white/10 pointer-auto" onclick="location.reload()">
-            🔄 تحديث
+    <!-- Debug Console -->
+    <div id="debug-console">
+        <div class="flex justify-between border-b border-zinc-800 mb-2 pb-1">
+            <span>LOGS / الأخطاء</span>
+            <span onclick="document.getElementById('debug-console').style.display='none'" class="text-red-500">إغلاق</span>
         </div>
-        <div class="bg-black/60 px-4 py-1 rounded-full border border-white/10 pointer-auto text-green-400 font-bold" onclick="showPage('wallet')">
-            <span id="bal-val">0.00</span> 💰
+        <div id="logs"></div>
+    </div>
+
+    <!-- Top UI -->
+    <div class="fixed top-10 left-5 right-5 flex justify-between items-center z-[100] pointer-events-none">
+        <div class="interactive bg-black/60 p-2 rounded-full clickable" 
+             onclick="log('جاري التحديث...'); location.reload()" 
+             oncontextmenu="event.preventDefault(); toggleDebug()">
+            🔄
+        </div>
+        <div class="interactive bg-black/60 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2 clickable" onclick="openPage('wallet')">
+            <span id="bal-top" class="text-green-400 font-black">0.0000</span>💰
         </div>
     </div>
 
-    <!-- الفيديوهات -->
+    <!-- Feed -->
     <div class="swiper mySwiper">
-        <div class="swiper-wrapper" id="video-list">
-            <!-- سيتم تحميل الفيديوهات هنا -->
-             <div class="swiper-slide flex items-center justify-center">جاري تحميل الفيديوهات...</div>
+        <div class="swiper-wrapper" id="video-feed">
+            <div class="swiper-slide flex items-center justify-center">تحميل البيانات...</div>
         </div>
     </div>
 
-    <!-- القائمة السفلية -->
-    <div class="bottom-nav">
-        <div class="tab-btn active" onclick="showPage('feed')"><span>🏠</span><span>الرئيسية</span></div>
-        <div class="tab-btn" onclick="showPage('friends')"><span>👥</span><span>الأصدقاء</span></div>
-        <div class="center-add" onclick="showPage('add')">+</div>
-        <div class="tab-btn" onclick="showPage('wallet')"><span>💰</span><span>الأرباح</span></div>
-        <div class="tab-btn" onclick="showPage('profile')"><span>👤</span><span>الملف</span></div>
+    <!-- Navbar -->
+    <div class="bottom-tabs">
+        <div class="tab active clickable" id="btn-home" onclick="closeAll()"><span>🏠</span><span>الرئيسية</span></div>
+        <div class="tab clickable" id="btn-friends" onclick="openPage('friends')"><span>👥</span><span>الأصدقاء</span></div>
+        <div class="btn-add clickable" onclick="openPage('add')">+</div>
+        <div class="tab clickable" id="btn-wallet" onclick="openPage('wallet')"><span>💰</span><span>الأرباح</span></div>
+        <div class="tab clickable" id="btn-profile" onclick="openPage('profile')"><span>👤</span><span>الملف</span></div>
     </div>
 
-    <!-- صفحة الأرباح -->
-    <div id="page-wallet" class="page">
+    <!-- Profile Page -->
+    <div id="page-profile" class="sub-page">
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-black">المحفظة</h1>
-            <button onclick="showPage('feed')" class="text-2xl">✕</button>
+            <h2 class="text-2xl font-black">ملفي</h2>
+            <span class="text-3xl clickable" onclick="closeAll()">✕</span>
         </div>
-        <div class="bg-zinc-900 p-8 rounded-3xl text-center shadow-2xl border border-zinc-800">
-            <p class="text-zinc-500 mb-2">رصيدك الحالي</p>
-            <div class="text-5xl font-black text-green-400 mb-6" id="wallet-val">$0.0000</div>
-            <button class="w-full bg-white text-black py-4 rounded-2xl font-black text-lg active:scale-95 transition" onclick="alert('سيتم فتح السحب قريباً')">طلب سحب</button>
+        <div class="flex items-center gap-4 mb-6">
+            <div id="prof-img" class="w-20 h-20 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-900"></div>
+            <div>
+                <h3 id="prof-name" class="text-xl font-bold">...</h3>
+                <p id="prof-uid" class="text-xs text-zinc-500"></p>
+            </div>
         </div>
-    </div>
-
-    <!-- صفحة الإضافة -->
-    <div id="page-add" class="page">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-black">نشر فيديو</h1>
-            <button onclick="showPage('feed')" class="text-2xl">✕</button>
-        </div>
-        <div class="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-            <p class="mb-4 text-zinc-400">أدخل رابط فيديو يوتيوب (Shorts أو عادي):</p>
-            <input type="text" id="vid-url" placeholder="https://youtube.com/..." class="w-full bg-black p-4 rounded-xl mb-4 border border-zinc-700">
-            <button onclick="uploadVid()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">تأكيد النشر</button>
+        <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+            <p class="text-xs text-zinc-400">إجمالي الأرباح</p>
+            <h2 id="prof-bal" class="text-3xl font-black text-green-400">$0.0000</h2>
         </div>
     </div>
 
-    <!-- صفحة الأصدقاء -->
-    <div id="page-friends" class="page text-center">
-        <div class="flex justify-between items-center mb-8 text-right">
-            <h1 class="text-3xl font-black">الأصدقاء</h1>
-            <button onclick="showPage('feed')" class="text-2xl">✕</button>
-        </div>
-        <div class="bg-zinc-900 p-8 rounded-3xl border border-zinc-800">
-            <p class="text-zinc-400 mb-4 text-sm">اربح 0.10$ عن كل صديق يقوم بالتسجيل من خلالك</p>
-            <div id="invite-link" class="bg-black p-4 rounded-xl text-blue-400 text-xs mb-6 break-all">...</div>
-            <button onclick="copyInvite()" class="w-full bg-[#fe2c55] py-4 rounded-xl font-black">نسخ الرابط</button>
-        </div>
+    <!-- Add Page -->
+    <div id="page-add" class="sub-page">
+        <div class="flex justify-between items-center mb-8"><h2 class="text-2xl font-black">نشر فيديو</h2><span onclick="closeAll()">✕</span></div>
+        <input type="text" id="v-input" placeholder="رابط يوتيوب..." class="w-full bg-zinc-900 p-4 rounded-xl mb-4 border border-zinc-800">
+        <button onclick="uploadVideo()" class="w-full bg-[#fe2c55] py-4 rounded-xl font-bold">نشر</button>
+    </div>
+
+    <!-- Wallet Page -->
+    <div id="page-wallet" class="sub-page text-center">
+        <div class="flex justify-between items-center mb-8 text-right"><h2 class="text-2xl font-black">المحفظة</h2><span onclick="closeAll()">✕</span></div>
+        <h1 class="text-5xl font-black text-green-400 my-10" id="w-bal-val">$0.0000</h1>
+        <button class="w-full bg-white text-black py-4 rounded-xl font-bold" onclick="alert('السحب متاح قريباً')">سحب الرصيد</button>
+    </div>
+
+    <!-- Friends Page -->
+    <div id="page-friends" class="sub-page">
+        <div class="flex justify-between items-center mb-8 text-right"><h2 class="text-2xl font-black">دعوة الأصدقاء</h2><span onclick="closeAll()">✕</span></div>
+        <div id="ref-link" class="bg-zinc-900 p-4 rounded-xl text-xs break-all mb-4 text-blue-400">...</div>
+        <button onclick="copyRef()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">نسخ الرابط</button>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <script>
-        // تكوين الخدمة السحابية
+        // دالة الـ Log للفكرة الجهنمية
+        function log(msg, type = 'info') {
+            const l = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'text-red-500' : (type === 'success' ? 'text-green-500' : 'text-blue-400');
+            l.innerHTML = `<div class="mb-1"><span class="text-zinc-600">[${time}]</span> <span class="${color}">${msg}</span></div>` + l.innerHTML;
+            if(type === 'error') document.getElementById('debug-console').style.display = 'block';
+        }
+
+        function toggleDebug() {
+            const c = document.getElementById('debug-console');
+            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // تهيئة البيانات
         const firebaseConfig = JSON.parse(__firebase_config);
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -136,171 +145,138 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const tg = window.Telegram.WebApp;
 
-        let user = null;
-        let mySwiper = null;
-        let players = {};
-        let currentBalance = 0;
+        // الاسم والصورة فوراً
+        const tgU = tg.initDataUnsafe?.user;
+        const uName = tgU?.first_name || "مستخدم فقرينر";
+        const uPhoto = tgU?.photo_url || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${tgU?.id || '1'}`;
+        
+        document.getElementById('prof-name').innerText = uName;
+        document.getElementById('prof-img').innerHTML = `<img src="${uPhoto}" class="w-full h-full object-cover">`;
+        log(`مرحباً ${uName}، جاري الاتصال بالخادم...`);
 
-        // 1. تشغيل التطبيق (بدون انتظار تليجرام لو تأخر)
-        async function initApp() {
+        let user = null, swiper, players = {}, videos = [];
+
+        async function init() {
             try {
-                tg.expand();
-                tg.ready();
-                
-                // محاولة تسجيل الدخول
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    log("جاري الدخول عبر التوكن...");
                     await auth.signInWithCustomToken(__initial_auth_token);
                 } else {
+                    log("الدخول كضيف...");
                     await auth.signInAnonymously();
                 }
             } catch (e) {
-                console.log("Auth Error: ", e);
+                log("خطأ في الدخول: " + e.message, 'error');
+                await auth.signInAnonymously();
             }
         }
 
-        // 2. مراقبة حالة المستخدم
         auth.onAuthStateChanged(u => {
             if (u) {
                 user = u;
-                loadProfile();
-                loadVideos();
-                updateInviteLink();
+                log("تم الاتصال بنجاح. ID: " + u.uid.substring(0,8), 'success');
+                document.getElementById('prof-uid').innerText = `ID: ${u.uid.substring(0,12)}`;
+                document.getElementById('ref-link').innerText = `https://t.me/FogrenerBot?start=${u.uid}`;
+                syncData();
+                loadVids();
             }
         });
 
-        // 3. جلب بيانات الملف الشخصي (بشكل آمن)
-        function loadProfile() {
-            const userPath = `/artifacts/${appId}/users/${user.uid}/profile/v2`;
-            db.doc(userPath).onSnapshot(doc => {
+        function syncData() {
+            const p = `/artifacts/${appId}/users/${user.uid}/profile/vDEBUG_FINAL`;
+            db.doc(p).onSnapshot(doc => {
                 if (doc.exists) {
-                    const data = doc.data();
-                    currentBalance = data.balance || 0;
-                    document.getElementById('bal-val').innerText = currentBalance.toFixed(4);
-                    document.getElementById('wallet-val').innerText = `$${currentBalance.toFixed(4)}`;
+                    const b = (doc.data().balance || 0).toFixed(4);
+                    document.getElementById('bal-top').innerText = b;
+                    document.getElementById('w-bal-val').innerText = `$${b}`;
+                    document.getElementById('prof-bal').innerText = `$${b}`;
                 } else {
-                    db.doc(userPath).set({ balance: 0, created: new Date() });
+                    log("إنشاء ملف مستخدم جديد...");
+                    db.doc(p).set({ balance: 0, created: new Date() });
                 }
-            }, (err) => console.log("Firestore Permission Error: ", err));
+            }, (e) => log("خطأ Firestore: " + e.message, 'error'));
         }
 
-        // 4. تحميل الفيديوهات
-        async function loadVideos() {
-            const vidPath = `/artifacts/${appId}/public/data/v2_vids`;
-            const snap = await db.collection(vidPath).get();
-            const videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        async function loadVids() {
+            log("جاري جلب الفيديوهات...");
+            const snap = await db.collection(`/artifacts/${appId}/public/data/vDEBUG_VIDS`).get();
+            videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
             
-            const container = document.getElementById('video-list');
             if (videos.length === 0) {
-                container.innerHTML = `<div class="swiper-slide flex items-center justify-center text-zinc-500">لا توجد فيديوهات، كن أول من ينشر!</div>`;
+                document.getElementById('video-feed').innerHTML = `<div class="swiper-slide flex items-center justify-center text-zinc-600">لا توجد فيديوهات</div>`;
                 return;
             }
 
-            container.innerHTML = videos.map((v, i) => `
+            document.getElementById('video-feed').innerHTML = videos.map((v, i) => `
                 <div class="swiper-slide">
-                    <div class="video-container">
-                        <div class="yt-wrapper">
-                            <div id="player-${i}"></div>
-                            <div class="touch-layer" onclick="togglePlay(${i})"></div>
-                        </div>
-                        <div class="absolute right-4 bottom-32 flex flex-col items-center gap-6 z-[200] pointer-auto">
-                            <div class="text-3xl" onclick="alert('أعجبني!')">❤️</div>
-                            <div class="text-3xl" onclick="showPage('friends')">🚀</div>
-                        </div>
-                        <div class="absolute bottom-24 left-4 z-[200]">
-                            <h3 class="font-bold">@${v.user || 'Unknown'}</h3>
+                    <div class="video-box relative h-full w-full flex items-center justify-center">
+                        <div id="player-${i}"></div>
+                        <div class="touch-mask" onclick="toggleV(${i})"></div>
+                        <div class="absolute bottom-[100px] left-5 pointer-events-none z-50">
+                            <h3 class="font-bold text-xl">@${v.author}</h3>
                         </div>
                     </div>
                 </div>
             `).join('');
 
-            initSwiper(videos);
+            initSwiper();
         }
 
-        // 5. تهيئة Swiper ومشغلات يوتيوب
-        function initSwiper(vids) {
-            mySwiper = new Swiper(".mySwiper", {
+        function initSwiper() {
+            swiper = new Swiper(".mySwiper", {
                 direction: "vertical",
-                on: {
-                    slideChange: () => {
-                        Object.values(players).forEach(p => p.pauseVideo?.());
-                        players[mySwiper.activeIndex]?.playVideo?.();
-                    }
-                }
+                on: { slideChange: () => { stopAll(); play(swiper.activeIndex); } }
             });
-
-            vids.forEach((v, i) => {
+            videos.forEach((v, i) => {
                 players[i] = new YT.Player(`player-${i}`, {
                     videoId: v.videoId,
-                    playerVars: { autoplay: (i===0?1:0), controls: 0, modestbranding: 1, playsinline: 1, loop: 1, rel: 0 },
-                    events: { 'onStateChange': (e) => handleEarn(e) }
+                    playerVars: { autoplay: 0, controls: 0, modestbranding: 1, playsinline: 1 }
                 });
             });
+            setTimeout(() => play(0), 1000);
+            log("تم تجهيز واجهة الفيديوهات", 'success');
         }
 
-        let earnTimer = null;
-        function handleEarn(e) {
-            if (e.data === YT.PlayerState.PLAYING) {
-                earnTimer = setInterval(() => {
-                    db.doc(`/artifacts/${appId}/users/${user.uid}/profile/v2`).update({
-                        balance: firebase.firestore.FieldValue.increment(0.0002)
-                    });
-                }, 10000); // ربح كل 10 ثواني مشاهدة
-            } else {
-                clearInterval(earnTimer);
-            }
+        function openPage(id) {
+            stopAll();
+            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${id}`).classList.add('active');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`btn-${id}`)?.classList.add('active');
+            log(`فتح صفحة: ${id}`);
         }
 
-        function togglePlay(i) {
-            const state = players[i]?.getPlayerState?.();
-            if (state === 1) players[i].pauseVideo();
-            else players[i].playVideo();
+        function closeAll() {
+            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('btn-home').classList.add('active');
+            if(swiper) play(swiper.activeIndex);
         }
 
-        // 6. التحكم بالصفحات
-        function showPage(id) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            if (id !== 'feed') {
-                document.getElementById(`page-${id}`).classList.add('active');
-                Object.values(players).forEach(p => p.pauseVideo?.());
-            } else {
-                players[mySwiper?.activeIndex]?.playVideo?.();
-            }
-        }
-
-        // 7. نشر فيديو
-        async function uploadVid() {
-            const url = document.getElementById('vid-url').value;
-            const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if (!vidId) return alert("الرابط غير صحيح");
-
-            const name = tg.initDataUnsafe?.user?.first_name || "مستخدم_فقرينر";
-            await db.collection(`/artifacts/${appId}/public/data/v2_vids`).add({
-                videoId: vidId,
-                user: name,
-                likes: 0,
-                time: new Date()
-            });
-            alert("تم النشر بنجاح!");
+        async function uploadVideo() {
+            const url = document.getElementById('v-input').value;
+            const id = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if (!id) return log("رابط يوتيوب غير صالح!", 'error');
+            await db.collection(`/artifacts/${appId}/public/data/vDEBUG_VIDS`).add({ videoId: id, author: uName, time: new Date() });
+            log("تم النشر بنجاح!", 'success');
             location.reload();
         }
 
-        function updateInviteLink() {
-            const link = `https://t.me/FogrenerBot?start=${user.uid}`;
-            document.getElementById('invite-link').innerText = link;
+        function toggleV(i) {
+            const s = players[i]?.getPlayerState?.();
+            if (s === 1) players[i].pauseVideo(); else players[i].playVideo();
+        }
+        function stopAll() { Object.values(players).forEach(p => p.pauseVideo?.()); }
+        function play(i) { players[i]?.playVideo?.(); }
+
+        function copyRef() {
+            const l = document.getElementById('ref-link').innerText;
+            const el = document.createElement('textarea'); el.value = l;
+            document.body.appendChild(el); el.select(); document.execCommand('copy');
+            document.body.removeChild(el); log("تم نسخ الرابط", 'success');
         }
 
-        function copyInvite() {
-            const link = document.getElementById('invite-link').innerText;
-            const el = document.createElement('textarea');
-            el.value = link;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            tg.showAlert("تم نسخ رابط الدعوة!");
-        }
-
-        window.onload = initApp;
+        window.onload = init;
     </script>
 </body>
 </html>
