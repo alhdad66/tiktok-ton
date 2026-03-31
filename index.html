@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener - Pro</title>
+    <title>Fogrener Fast</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -69,29 +69,13 @@
         /* Overlays */
         .overlay { position: fixed; inset: 0; background: #000; z-index: 300; display: none; padding: 20px; flex-direction: column; }
         .overlay.active { display: flex; }
-        
-        #loader-screen {
-            position: fixed; inset: 0; background: #000; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .spinner { width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .video-grid { display: grid; grid-cols: 3; gap: 2px; margin-top: 15px; }
-        .grid-item { aspect-ratio: 9/16; background: #111; border-radius: 4px; overflow: hidden; }
     </style>
 </head>
 <body>
 
-    <!-- Loader -->
-    <div id="loader-screen">
-        <div class="spinner mb-4"></div>
-        <p class="font-bold tracking-widest">FOGRENER</p>
-    </div>
-
     <!-- UI: Top -->
     <div class="top-bar">
-        <div class="bell-container" onclick="clearNotif()">
+        <div class="bell-container" id="bell-btn">
             🔔 <div id="notif-badge" class="bell-dot">1</div>
         </div>
         <div class="bal-chip" onclick="openOverlay('wallet')">
@@ -136,7 +120,7 @@
             <span class="text-2xl" onclick="closeAll()">✕</span>
         </div>
         <input type="text" id="v-input" placeholder="رابط يوتيوب..." class="w-full bg-zinc-900 p-4 rounded-xl border border-white/10 mb-4 outline-none">
-        <button onclick="handlePublish()" id="pub-btn" class="w-full bg-red-600 py-4 rounded-xl font-bold">نشر الآن</button>
+        <button onclick="handlePublish()" id="pub-btn" class="w-full bg-red-600 py-4 rounded-xl font-bold active:scale-95 transition">نشر الآن</button>
     </div>
 
     <!-- Page: Profile -->
@@ -146,15 +130,15 @@
             <span class="text-2xl" onclick="closeAll()">✕</span>
         </div>
         <div class="flex items-center gap-4 mb-8">
-            <div id="u-avatar" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-white/10"></div>
+            <div id="u-avatar" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-white/10 overflow-hidden"></div>
             <div>
                 <h3 id="u-name" class="font-bold text-lg">...</h3>
-                <p id="u-id" class="text-gray-500 text-xs"></p>
+                <p id="u-id" class="text-gray-500 text-[10px]"></p>
             </div>
         </div>
-        <h4 class="font-bold border-b border-white/10 pb-2 mb-4">فيديوهات أعجبتني</h4>
-        <div id="liked-grid" class="grid grid-cols-3 gap-1 overflow-y-auto">
-            <!-- Liked vids here -->
+        <h4 class="font-bold border-b border-white/10 pb-2 mb-4">الفيديوهات التي أعجبتك</h4>
+        <div id="liked-grid" class="grid grid-cols-3 gap-1 overflow-y-auto pb-20">
+            <!-- Liked thumbnails -->
         </div>
     </div>
 
@@ -173,8 +157,8 @@
         let swiper, players = {}, videos = [];
         let likedIds = [];
 
-        // Auth & Init
-        async function init() {
+        // Auth & Immediate Startup
+        async function start() {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await auth.signInWithCustomToken(__initial_auth_token);
             } else {
@@ -185,14 +169,13 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
-                document.getElementById('loader-screen').style.display = 'none';
-                syncData();
-                loadFeed();
+                syncProfile();
+                loadContent();
             }
         });
 
-        function syncData() {
-            const path = `/artifacts/${appId}/users/${currentUser.uid}/profile/v1`;
+        function syncProfile() {
+            const path = `/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`;
             db.doc(path).onSnapshot(doc => {
                 if (doc.exists) {
                     const d = doc.data();
@@ -201,31 +184,31 @@
                     document.getElementById('w-bal').innerText = `$${b}`;
                     likedIds = d.likedVideos || [];
                     
-                    document.getElementById('u-name').innerText = tg.initDataUnsafe?.user?.first_name || "مستخدم";
-                    document.getElementById('u-id').innerText = `ID: ${currentUser.uid}`;
-                    document.getElementById('u-avatar').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser.uid}" />`;
-                    renderLikedGrid();
+                    document.getElementById('u-name').innerText = tg.initDataUnsafe?.user?.first_name || "مستخدم فقرينر";
+                    document.getElementById('u-id').innerText = currentUser.uid;
+                    document.getElementById('u-avatar').innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.uid}" class="w-full h-full">`;
+                    updateLikedUI();
                 } else {
                     db.doc(path).set({ balance: 0, likedVideos: [] });
                 }
             });
         }
 
-        async function loadFeed() {
-            const snap = await db.collection(`/artifacts/${appId}/public/data/vids`).get();
+        async function loadContent() {
+            const snap = await db.collection(`/artifacts/${appId}/public/data/videos`).get();
             videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
 
-            const wrapper = document.getElementById('feed');
+            const feed = document.getElementById('feed');
             if (videos.length === 0) {
-                wrapper.innerHTML = `<div class="swiper-slide flex items-center justify-center">لا يوجد محتوى</div>`;
+                feed.innerHTML = `<div class="swiper-slide flex items-center justify-center">اضغط على + لنشر فيديو</div>`;
                 return;
             }
 
-            wrapper.innerHTML = videos.map((v, i) => `
+            feed.innerHTML = videos.map((v, i) => `
                 <div class="swiper-slide">
-                    <div class="video-box"><div id="p-${i}" class="yt-frame"></div></div>
+                    <div class="video-box"><div id="v-player-${i}" class="yt-frame"></div></div>
                     <div class="sidebar">
-                        <div class="action-item" onclick="toggleLike('${v.id}')">
+                        <div class="action-item" onclick="handleLike('${v.id}')">
                             <span class="btn-icon ${likedIds.includes(v.id) ? 'liked' : ''}" id="icon-${v.id}">❤️</span>
                             <span class="text-xs font-bold" id="cnt-${v.id}">${v.likes || 0}</span>
                         </div>
@@ -234,65 +217,67 @@
                             <span class="text-[10px]">مشاركة</span>
                         </div>
                     </div>
-                    <div class="absolute bottom-[90px] left-4 z-10">
+                    <div class="absolute bottom-[90px] left-4 right-16 z-10 pointer-events-none">
                         <h3 class="font-bold text-lg">@${v.author}</h3>
-                        <p class="text-sm opacity-80">شاهد الفيديو لتربح!</p>
+                        <p class="text-sm opacity-80">شاهد لتربح الرصيد 💰</p>
                     </div>
                 </div>
             `).join('');
 
-            initSwiper();
+            initVideoEngine();
         }
 
-        function initSwiper() {
+        function initVideoEngine() {
             swiper = new Swiper(".mySwiper", {
                 direction: "vertical",
-                on: { slideChange: () => { stopAll(); play(swiper.activeIndex); } }
+                on: { slideChange: () => { stop(); play(swiper.activeIndex); } }
             });
+
             videos.forEach((v, i) => {
-                players[i] = new YT.Player(`p-${i}`, {
+                players[i] = new YT.Player(`v-player-${i}`, {
                     videoId: v.videoId,
                     playerVars: { autoplay: 0, controls: 0, modestbranding: 1, playsinline: 1, loop: 1 },
-                    events: { 'onStateChange': (e) => earn(e) }
+                    events: { 'onStateChange': (e) => trackEarn(e) }
                 });
             });
-            setTimeout(() => play(0), 1000);
+            setTimeout(() => play(0), 500);
         }
 
-        let earnRef = null;
-        function earn(e) {
+        let earnTimer = null;
+        function trackEarn(e) {
             if (e.data === YT.PlayerState.PLAYING) {
-                earnRef = setInterval(() => {
-                    db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/v1`).update({
+                earnTimer = setInterval(() => {
+                    db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`).update({
                         balance: firebase.firestore.FieldValue.increment(0.0001)
                     });
                 }, 5000);
             } else {
-                clearInterval(earnRef);
+                clearInterval(earnTimer);
             }
         }
 
-        async function toggleLike(vidId) {
-            const userRef = db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/v1`);
-            const vidRef = db.doc(`/artifacts/${appId}/public/data/vids/${vidId}`);
+        async function handleLike(id) {
+            const uRef = db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`);
+            const vRef = db.doc(`/artifacts/${appId}/public/data/videos/${id}`);
             
-            if (likedIds.includes(vidId)) {
-                await userRef.update({ likedVideos: firebase.firestore.FieldValue.arrayRemove(vidId) });
-                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+            const isLiked = likedIds.includes(id);
+            if (isLiked) {
+                await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayRemove(id) });
+                await vRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
             } else {
-                await userRef.update({ likedVideos: firebase.firestore.FieldValue.arrayUnion(vidId) });
-                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+                await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayUnion(id) });
+                await vRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
             }
-            tg.HapticFeedback.impactOccurred('medium');
-            loadFeed(); // Refresh UI
+            tg.HapticFeedback.impactOccurred('light');
+            loadContent(); // تحديث فوري
         }
 
         async function handlePublish() {
             const url = document.getElementById('v-input').value;
             const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if (!vidId) return alert("الرابط خطأ");
+            if (!vidId) return alert("تأكد من رابط يوتيوب");
 
-            await db.collection(`/artifacts/${appId}/public/data/vids`).add({
+            await db.collection(`/artifacts/${appId}/public/data/videos`).add({
                 videoId: vidId,
                 author: tg.initDataUnsafe?.user?.first_name || "Guest",
                 likes: 0,
@@ -301,23 +286,27 @@
             location.reload();
         }
 
-        function renderLikedGrid() {
+        function updateLikedUI() {
             const grid = document.getElementById('liked-grid');
-            const likedVids = videos.filter(v => likedIds.includes(v.id));
-            grid.innerHTML = likedVids.map(v => `
-                <div class="grid-item">
+            const likedList = videos.filter(v => likedIds.includes(v.id));
+            grid.innerHTML = likedList.map(v => `
+                <div class="aspect-[9/16] bg-zinc-800 rounded overflow-hidden">
                     <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover">
                 </div>
             `).join('');
         }
 
         function play(i) { players[i]?.playVideo?.(); }
-        function stopAll() { Object.values(players).forEach(p => p.pauseVideo?.()); clearInterval(earnRef); }
-        function openOverlay(id) { stopAll(); document.getElementById(`overlay-${id}`).classList.add('active'); }
+        function stop() { Object.values(players).forEach(p => p.pauseVideo?.()); clearInterval(earnTimer); }
+        function openOverlay(id) { stop(); document.getElementById(`overlay-${id}`).classList.add('active'); }
         function closeAll() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); play(swiper.activeIndex); }
-        function clearNotif() { document.getElementById('notif-badge').style.display = 'none'; alert("لا توجد إشعارات جديدة"); }
 
-        window.onload = init;
+        document.getElementById('bell-btn').onclick = () => {
+            document.getElementById('notif-badge').style.display = 'none';
+            alert("إشعار جديد: تم تحديث النظام بنجاح!");
+        };
+
+        window.onload = start;
     </script>
 </body>
 </html>
