@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener Fast</title>
+    <title>Fogrener - YouTube Pro</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,128 +18,111 @@
         body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; overflow: hidden; }
         
         .swiper { height: 100vh; width: 100vw; }
-        .video-box { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
-        .yt-frame { width: 100%; height: 100%; pointer-events: none; }
+        .video-box { position: absolute; inset: 0; background: #000; display: flex; align-items: center; }
+        .yt-frame { width: 100%; height: 60%; pointer-events: none; }
 
-        /* Top Bar */
-        .top-bar {
-            position: fixed; top: 35px; left: 0; right: 0; z-index: 100;
-            display: flex; justify-content: space-between; padding: 0 15px; align-items: center;
-        }
-        .bal-chip {
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-            padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
-            display: flex; align-items: center; gap: 8px; font-weight: bold; color: #4ade80;
-        }
+        /* UI Overlays */
+        .top-ui { position: fixed; top: 35px; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-between; padding: 0 15px; }
+        .bal-chip { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; font-weight: 900; color: #4ade80; }
 
-        /* Notifications */
-        .bell-container { position: relative; font-size: 24px; cursor: pointer; }
-        .bell-dot {
-            position: absolute; top: -2px; right: -2px;
-            background: #ff0050; color: white; font-size: 10px;
-            width: 15px; height: 15px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-weight: bold;
-        }
+        .sidebar { position: absolute; right: 10px; bottom: 120px; z-index: 50; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .action-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .btn-icon { font-size: 34px; text-shadow: 0 0 10px rgba(0,0,0,0.5); cursor: pointer; transition: 0.2s; }
+        .btn-icon.liked { color: #fe2c55; }
 
-        /* Sidebar Actions */
-        .sidebar {
-            position: absolute; right: 10px; bottom: 120px; z-index: 50;
-            display: flex; flex-direction: column; gap: 18px; align-items: center;
-        }
-        .action-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .btn-icon { font-size: 32px; transition: 0.2s; }
-        .btn-icon.liked { color: #ff0050; }
-
-        /* Bottom Nav */
-        .nav-bar {
-            position: fixed; bottom: 0; width: 100%; height: 70px;
-            background: #000; display: flex; justify-content: space-around; align-items: center;
-            border-top: 0.5px solid #222; z-index: 200;
-        }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 10px; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #111; z-index: 200; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #555; font-size: 11px; font-weight: bold; }
         .nav-item.active { color: #fff; }
-        .plus-btn {
-            background: #fff; width: 45px; height: 28px; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: #000; font-weight: bold; font-size: 20px; position: relative;
-        }
+        .plus-btn { background: #fff; width: 45px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; position: relative; }
         .plus-btn::before { content: ''; position: absolute; left: -4px; width: 10px; height: 100%; background: #25f4ee; border-radius: 8px; z-index: -1; }
         .plus-btn::after { content: ''; position: absolute; right: -4px; width: 10px; height: 100%; background: #fe2c55; border-radius: 8px; z-index: -1; }
 
-        /* Overlays */
-        .overlay { position: fixed; inset: 0; background: #000; z-index: 300; display: none; padding: 20px; flex-direction: column; }
+        .overlay { position: fixed; inset: 0; background: #000; z-index: 300; display: none; padding: 25px; flex-direction: column; }
         .overlay.active { display: flex; }
+        
+        .bell-dot { position: absolute; top: -2px; right: -2px; background: #fe2c55; width: 15px; height: 15px; border-radius: 50%; border: 2px solid #000; font-size: 10px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <!-- UI: Top -->
-    <div class="top-bar">
-        <div class="bell-container" id="bell-btn">
+    <div class="top-ui">
+        <div class="relative text-2xl" id="notif-btn" style="cursor:pointer">
             🔔 <div id="notif-badge" class="bell-dot">1</div>
         </div>
-        <div class="bal-chip" onclick="openOverlay('wallet')">
+        <div class="bal-chip" onclick="showPage('wallet')">
             <span id="h-bal">0.0000</span>
             <span>💰</span>
         </div>
     </div>
 
-    <!-- Feed -->
     <div class="swiper mySwiper">
-        <div class="swiper-wrapper" id="feed">
-            <!-- Videos inject -->
+        <div class="swiper-wrapper" id="feed-container">
+            <!-- Videos injected -->
         </div>
     </div>
 
-    <!-- Bottom Nav -->
     <div class="nav-bar">
-        <div class="nav-item active" onclick="closeAll()"><span>🏠</span><span>الرئيسية</span></div>
-        <div class="nav-item" onclick="alert('قريباً')"><span>👥</span><span>الأصدقاء</span></div>
-        <div class="plus-btn" onclick="openOverlay('add')">+</div>
-        <div class="nav-item" onclick="openOverlay('wallet')"><span>📊</span><span>الإحصائيات</span></div>
-        <div class="nav-item" onclick="openOverlay('profile')"><span>👤</span><span>الملف</span></div>
+        <div class="nav-item active" id="n-home" onclick="hidePages()"><span>🏠</span><span>الرئيسية</span></div>
+        <div class="nav-item" id="n-friends" onclick="showPage('friends')"><span>👥</span><span>الأصدقاء</span></div>
+        <div class="plus-btn" onclick="showPage('add')">+</div>
+        <div class="nav-item" id="n-wallet" onclick="showPage('wallet')"><span>📊</span><span>الأرباح</span></div>
+        <div class="nav-item" id="n-profile" onclick="showPage('profile')"><span>👤</span><span>الملف</span></div>
     </div>
 
-    <!-- Page: Wallet -->
-    <div id="overlay-wallet" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-bold">محفظة الأرباح</h2>
-            <span class="text-2xl" onclick="closeAll()">✕</span>
+    <!-- Friends Page -->
+    <div id="page-friends" class="overlay">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black">نظام الأصدقاء</h2>
+            <span class="text-3xl" onclick="hidePages()">✕</span>
         </div>
-        <div class="bg-zinc-900 p-8 rounded-3xl text-center mb-6">
-            <p class="text-gray-500 text-sm mb-2">الرصيد المتاح</p>
-            <h1 class="text-5xl font-black text-green-400 mb-6" id="w-bal">$0.0000</h1>
-            <button onclick="alert('سيتم التحويل لمحفظتك قريباً')" class="w-full bg-white text-black py-4 rounded-xl font-bold">سحب الرصيد</button>
+        <div class="bg-zinc-900 p-6 rounded-3xl text-center">
+            <p class="text-gray-400 mb-4">ادعُ أصدقاءك واربح 0.10$ عن كل شخص!</p>
+            <div id="ref-link" class="bg-black p-4 rounded-xl border border-white/10 font-mono text-sm break-all mb-4 text-blue-400">...</div>
+            <button onclick="copyRef()" class="w-full bg-[#fe2c55] py-4 rounded-xl font-black">نسخ الرابط</button>
         </div>
     </div>
 
-    <!-- Page: Add Video -->
-    <div id="overlay-add" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-bold">نشر فيديو</h2>
-            <span class="text-2xl" onclick="closeAll()">✕</span>
+    <!-- Wallet Page -->
+    <div id="page-wallet" class="overlay">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black">الأرباح</h2>
+            <span class="text-3xl" onclick="hidePages()">✕</span>
         </div>
-        <input type="text" id="v-input" placeholder="رابط يوتيوب..." class="w-full bg-zinc-900 p-4 rounded-xl border border-white/10 mb-4 outline-none">
-        <button onclick="handlePublish()" id="pub-btn" class="w-full bg-red-600 py-4 rounded-xl font-bold active:scale-95 transition">نشر الآن</button>
+        <div class="bg-zinc-900 p-10 rounded-3xl text-center border border-white/5">
+            <p class="text-gray-500 mb-2 text-sm">إجمالي رصيدك</p>
+            <h1 class="text-5xl font-black text-green-400 mb-10" id="w-bal">$0.0000</h1>
+            <button class="w-full bg-white text-black py-4 rounded-xl font-black active:scale-95 transition" onclick="alert('الحد الأدنى 10$')">سحب الرصيد</button>
+        </div>
     </div>
 
-    <!-- Page: Profile -->
-    <div id="overlay-profile" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-bold">ملفي الشخصي</h2>
-            <span class="text-2xl" onclick="closeAll()">✕</span>
+    <!-- Add Video Page -->
+    <div id="page-add" class="overlay">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black">نشر فيديو</h2>
+            <span class="text-3xl" onclick="hidePages()">✕</span>
+        </div>
+        <div class="bg-zinc-900 p-6 rounded-3xl">
+            <label class="block text-gray-400 mb-2 text-sm">رابط يوتيوب (Shorts أو فيديو عادي)</label>
+            <input type="text" id="v-input" placeholder="https://youtube.com/..." class="w-full bg-black p-5 rounded-xl border border-white/10 mb-6 outline-none focus:border-red-500">
+            <button onclick="publishVideo()" id="pub-btn" class="w-full bg-[#fe2c55] py-5 rounded-xl font-black active:scale-95 transition">نشر في فقرينر</button>
+        </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div id="page-profile" class="overlay">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black">ملفي الشخصي</h2>
+            <span class="text-3xl" onclick="hidePages()">✕</span>
         </div>
         <div class="flex items-center gap-4 mb-8">
             <div id="u-avatar" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-white/10 overflow-hidden"></div>
             <div>
-                <h3 id="u-name" class="font-bold text-lg">...</h3>
-                <p id="u-id" class="text-gray-500 text-[10px]"></p>
+                <h3 id="u-name" class="font-black text-xl">...</h3>
+                <p id="u-id" class="text-xs text-gray-500"></p>
             </div>
         </div>
-        <h4 class="font-bold border-b border-white/10 pb-2 mb-4">الفيديوهات التي أعجبتك</h4>
-        <div id="liked-grid" class="grid grid-cols-3 gap-1 overflow-y-auto pb-20">
-            <!-- Liked thumbnails -->
-        </div>
+        <h4 class="font-bold text-gray-400 mb-4 border-b border-white/10 pb-2">فيديوهات أعجبتك</h4>
+        <div id="liked-grid" class="grid grid-cols-3 gap-1 overflow-y-auto pb-24"></div>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -153,12 +136,9 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const tg = window.Telegram.WebApp;
 
-        let currentUser = null;
-        let swiper, players = {}, videos = [];
-        let likedIds = [];
+        let user = null, swiper, players = {}, videos = [], likedIds = [];
 
-        // Auth & Immediate Startup
-        async function start() {
+        async function initApp() {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await auth.signInWithCustomToken(__initial_auth_token);
             } else {
@@ -166,16 +146,17 @@
             }
         }
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
+        auth.onAuthStateChanged(u => {
+            if (u) {
+                user = u;
                 syncProfile();
-                loadContent();
+                loadVideos();
+                document.getElementById('ref-link').innerText = `https://t.me/FogrenerBot?start=${u.uid}`;
             }
         });
 
         function syncProfile() {
-            const path = `/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`;
+            const path = `/artifacts/${appId}/users/${user.uid}/profile/vFinal`;
             db.doc(path).onSnapshot(doc => {
                 if (doc.exists) {
                     const d = doc.data();
@@ -185,8 +166,8 @@
                     likedIds = d.likedVideos || [];
                     
                     document.getElementById('u-name').innerText = tg.initDataUnsafe?.user?.first_name || "مستخدم فقرينر";
-                    document.getElementById('u-id').innerText = currentUser.uid;
-                    document.getElementById('u-avatar').innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.uid}" class="w-full h-full">`;
+                    document.getElementById('u-id').innerText = user.uid;
+                    document.getElementById('u-avatar').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.uid}" class="w-full h-full">`;
                     updateLikedUI();
                 } else {
                     db.doc(path).set({ balance: 0, likedVideos: [] });
@@ -194,73 +175,66 @@
             });
         }
 
-        async function loadContent() {
-            const snap = await db.collection(`/artifacts/${appId}/public/data/videos`).get();
+        async function loadVideos() {
+            const snap = await db.collection(`/artifacts/${appId}/public/data/vFinal_videos`).get();
             videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
-
-            const feed = document.getElementById('feed');
+            
+            const container = document.getElementById('feed-container');
             if (videos.length === 0) {
-                feed.innerHTML = `<div class="swiper-slide flex items-center justify-center">اضغط على + لنشر فيديو</div>`;
+                container.innerHTML = `<div class="swiper-slide flex items-center justify-center text-gray-600">لا توجد فيديوهات بعد</div>`;
                 return;
             }
 
-            feed.innerHTML = videos.map((v, i) => `
+            container.innerHTML = videos.map((v, i) => `
                 <div class="swiper-slide">
-                    <div class="video-box"><div id="v-player-${i}" class="yt-frame"></div></div>
+                    <div class="video-box"><div id="player-${i}" class="yt-frame"></div></div>
                     <div class="sidebar">
-                        <div class="action-item" onclick="handleLike('${v.id}')">
+                        <div class="action-item" onclick="toggleLike('${v.id}')">
                             <span class="btn-icon ${likedIds.includes(v.id) ? 'liked' : ''}" id="icon-${v.id}">❤️</span>
-                            <span class="text-xs font-bold" id="cnt-${v.id}">${v.likes || 0}</span>
-                        </div>
-                        <div class="action-item" onclick="alert('تم نسخ الرابط')">
-                            <span class="btn-icon">🚀</span>
-                            <span class="text-[10px]">مشاركة</span>
+                            <span class="text-xs font-black" id="cnt-${v.id}">${v.likes || 0}</span>
                         </div>
                     </div>
-                    <div class="absolute bottom-[90px] left-4 right-16 z-10 pointer-events-none">
-                        <h3 class="font-bold text-lg">@${v.author}</h3>
-                        <p class="text-sm opacity-80">شاهد لتربح الرصيد 💰</p>
+                    <div class="absolute bottom-[90px] left-5 right-20 pointer-events-none">
+                        <h3 class="font-black text-xl mb-1">@${v.author}</h3>
+                        <p class="text-sm opacity-80">اربح بالدولار مقابل كل ثانية مشاهدة 💰</p>
                     </div>
                 </div>
             `).join('');
 
-            initVideoEngine();
+            initSwiper();
         }
 
-        function initVideoEngine() {
+        function initSwiper() {
             swiper = new Swiper(".mySwiper", {
                 direction: "vertical",
-                on: { slideChange: () => { stop(); play(swiper.activeIndex); } }
+                on: { slideChange: () => { stopAll(); play(swiper.activeIndex); } }
             });
-
             videos.forEach((v, i) => {
-                players[i] = new YT.Player(`v-player-${i}`, {
+                players[i] = new YT.Player(`player-${i}`, {
                     videoId: v.videoId,
                     playerVars: { autoplay: 0, controls: 0, modestbranding: 1, playsinline: 1, loop: 1 },
-                    events: { 'onStateChange': (e) => trackEarn(e) }
+                    events: { 'onStateChange': (e) => earnLogic(e) }
                 });
             });
-            setTimeout(() => play(0), 500);
+            setTimeout(() => play(0), 1000);
         }
 
-        let earnTimer = null;
-        function trackEarn(e) {
+        let timer = null;
+        function earnLogic(e) {
             if (e.data === YT.PlayerState.PLAYING) {
-                earnTimer = setInterval(() => {
-                    db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`).update({
+                timer = setInterval(() => {
+                    db.doc(`/artifacts/${appId}/users/${user.uid}/profile/vFinal`).update({
                         balance: firebase.firestore.FieldValue.increment(0.0001)
                     });
                 }, 5000);
-            } else {
-                clearInterval(earnTimer);
-            }
+            } else { clearInterval(timer); }
         }
 
-        async function handleLike(id) {
-            const uRef = db.doc(`/artifacts/${appId}/users/${currentUser.uid}/profile/main_v1`);
-            const vRef = db.doc(`/artifacts/${appId}/public/data/videos/${id}`);
-            
+        async function toggleLike(id) {
+            const uRef = db.doc(`/artifacts/${appId}/users/${user.uid}/profile/vFinal`);
+            const vRef = db.doc(`/artifacts/${appId}/public/data/vFinal_videos/${id}`);
             const isLiked = likedIds.includes(id);
+
             if (isLiked) {
                 await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayRemove(id) });
                 await vRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
@@ -268,45 +242,64 @@
                 await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayUnion(id) });
                 await vRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
             }
-            tg.HapticFeedback.impactOccurred('light');
-            loadContent(); // تحديث فوري
+            tg.HapticFeedback.impactOccurred('medium');
+            loadVideos();
         }
 
-        async function handlePublish() {
-            const url = document.getElementById('v-input').value;
-            const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if (!vidId) return alert("تأكد من رابط يوتيوب");
+        async function publishVideo() {
+            const val = document.getElementById('v-input').value;
+            const vid = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if (!vid) return alert("الرابط غير صحيح");
 
-            await db.collection(`/artifacts/${appId}/public/data/videos`).add({
-                videoId: vidId,
+            await db.collection(`/artifacts/${appId}/public/data/vFinal_videos`).add({
+                videoId: vid,
                 author: tg.initDataUnsafe?.user?.first_name || "Guest",
                 likes: 0,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             location.reload();
         }
 
         function updateLikedUI() {
             const grid = document.getElementById('liked-grid');
-            const likedList = videos.filter(v => likedIds.includes(v.id));
-            grid.innerHTML = likedList.map(v => `
-                <div class="aspect-[9/16] bg-zinc-800 rounded overflow-hidden">
+            grid.innerHTML = videos.filter(v => likedIds.includes(v.id)).map(v => `
+                <div class="aspect-[9/16] bg-zinc-900 rounded-lg overflow-hidden border border-white/5">
                     <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover">
                 </div>
             `).join('');
         }
 
         function play(i) { players[i]?.playVideo?.(); }
-        function stop() { Object.values(players).forEach(p => p.pauseVideo?.()); clearInterval(earnTimer); }
-        function openOverlay(id) { stop(); document.getElementById(`overlay-${id}`).classList.add('active'); }
-        function closeAll() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); play(swiper.activeIndex); }
+        function stopAll() { Object.values(players).forEach(p => p.pauseVideo?.()); clearInterval(timer); }
+        
+        function showPage(id) {
+            stopAll();
+            document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+            document.getElementById(`page-${id}`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`n-${id === 'wallet' ? 'wallet' : id}`).classList.add('active');
+        }
 
-        document.getElementById('bell-btn').onclick = () => {
+        function hidePages() {
+            document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('n-home').classList.add('active');
+            if(swiper) play(swiper.activeIndex);
+        }
+
+        function copyRef() {
+            const text = document.getElementById('ref-link').innerText;
+            const el = document.createElement('textarea'); el.value = text;
+            document.body.appendChild(el); el.select(); document.execCommand('copy');
+            document.body.removeChild(el); alert("تم نسخ رابط الدعوة!");
+        }
+
+        document.getElementById('notif-btn').onclick = () => {
             document.getElementById('notif-badge').style.display = 'none';
-            alert("إشعار جديد: تم تحديث النظام بنجاح!");
+            alert("إشعار: تم تفعيل نظام الأصدقاء والأرباح!");
         };
 
-        window.onload = start;
+        window.onload = initApp;
     </script>
 </body>
 </html>
