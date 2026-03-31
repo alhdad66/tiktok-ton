@@ -3,342 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener - Telegram Fix</title>
-    
+    <title>TikTok TON - شاهد واربح</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
         
-        .swiper { height: 100vh; width: 100vw; z-index: 10; }
-        .video-box { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; z-index: 5; }
-        
-        /* جعل اليوتيوب يقبل اللمس ولكن خلف الأزرار */
-        .yt-frame { width: 100%; height: 70%; border: none; z-index: 6; }
-
-        /* الأزرار العلوية */
-        .top-ui { position: fixed; top: 35px; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; }
-        .top-ui * { pointer-events: auto; }
-        .bal-chip { background: rgba(20,20,20,0.85); backdrop-filter: blur(10px); padding: 6px 16px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); color: #4ade80; font-weight: 900; display: flex; align-items: center; gap: 6px; }
-
-        /* القائمة الجانبية */
-        .sidebar { position: absolute; right: 12px; bottom: 130px; z-index: 80; display: flex; flex-direction: column; gap: 22px; align-items: center; }
-        .btn-icon { font-size: 36px; cursor: pointer; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.9)); transition: 0.1s; }
-        .btn-icon:active { transform: scale(1.2); }
-        .liked { color: #fe2c55; }
-
-        /* شريط التنقل */
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #1a1a1a; z-index: 200; padding-bottom: 15px; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 11px; font-weight: bold; cursor: pointer; }
-        .nav-item.active { color: #fff; }
-        
-        .plus-btn { background: #fff; width: 48px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; position: relative; cursor: pointer; }
-        .plus-btn::before { content: ''; position: absolute; left: -4px; width: 12px; height: 100%; background: #25f4ee; border-radius: 8px; z-index: -1; }
-        .plus-btn::after { content: ''; position: absolute; right: -4px; width: 12px; height: 100%; background: #fe2c55; border-radius: 8px; z-index: -1; }
-
-        /* الصفحات المنبثقة */
-        .overlay { position: fixed; inset: 0; background: #000; z-index: 500; display: none; padding: 25px; flex-direction: column; }
-        .overlay.active { display: flex; }
-        
-        .bell-dot { position: absolute; top: -2px; right: -2px; background: #fe2c55; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #000; font-size: 10px; color: white; display: flex; align-items: center; justify-content: center; }
-        
-        /* تجميل البروفايل */
-        .grid-item { aspect-ratio: 9/16; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #222; }
-    </style>
-</head>
-<body>
-
-    <div class="top-ui">
-        <div class="relative text-2xl" id="btn-notif">
-            🔔 <div id="dot-notif" class="bell-dot">1</div>
-        </div>
-        <div class="bal-chip" onclick="openPage('wallet')">
-            <span id="txt-bal-top">0.0000</span>
-            <span class="text-yellow-500">💰</span>
-        </div>
-    </div>
-
-    <div class="swiper mySwiper">
-        <div class="swiper-wrapper" id="main-feed">
-            <!-- الفيديوهات سيتم حقنها هنا -->
-        </div>
-    </div>
-
-    <div class="nav-bar">
-        <div class="nav-item active" id="m-home" onclick="goHome()"><span>🏠</span><span>الرئيسية</span></div>
-        <div class="nav-item" id="m-friends" onclick="openPage('friends')"><span>👥</span><span>الأصدقاء</span></div>
-        <div class="plus-btn" onclick="openPage('add')">+</div>
-        <div class="nav-item" id="m-wallet" onclick="openPage('wallet')"><span>📊</span><span>الأرباح</span></div>
-        <div class="nav-item" id="m-profile" onclick="openPage('profile')"><span>👤</span><span>الملف</span></div>
-    </div>
-
-    <!-- صفحة الأصدقاء -->
-    <div id="pg-friends" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black">الأصدقاء</h2>
-            <span class="text-3xl" onclick="goHome()">✕</span>
-        </div>
-        <div class="bg-zinc-900 p-6 rounded-3xl text-center">
-            <p class="text-gray-400 mb-4 font-bold">كل صديق يشترك يضيف لرصيدك 0.10$</p>
-            <div id="link-share" class="bg-black p-4 rounded-xl border border-white/10 text-blue-400 font-mono text-xs break-all mb-4">...</div>
-            <button onclick="copyRefLink()" class="w-full bg-[#fe2c55] py-4 rounded-xl font-black active:bg-red-700">نسخ رابط الإحالة</button>
-        </div>
-        <div class="mt-8">
-            <h3 class="text-gray-500 font-bold mb-4">أصدقاؤك (0)</h3>
-            <p class="text-center text-zinc-700">لا يوجد بيانات حالياً</p>
-        </div>
-    </div>
-
-    <!-- صفحة المحفظة -->
-    <div id="pg-wallet" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black">المحفظة</h2>
-            <span class="text-3xl" onclick="goHome()">✕</span>
-        </div>
-        <div class="bg-gradient-to-b from-zinc-800 to-zinc-950 p-10 rounded-3xl text-center shadow-2xl">
-            <p class="text-zinc-400 text-sm mb-2">الرصيد المتاح</p>
-            <h1 class="text-5xl font-black text-green-400 mb-10" id="txt-bal-wallet">$0.0000</h1>
-            <button onclick="alert('الحد الأدنى للسحب هو 10$')" class="w-full bg-white text-black py-4 rounded-xl font-black">سحب الرصيد</button>
-        </div>
-    </div>
-
-    <!-- صفحة إضافة فيديو -->
-    <div id="pg-add" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black">نشر جديد</h2>
-            <span class="text-3xl" onclick="goHome()">✕</span>
-        </div>
-        <div class="bg-zinc-900 p-6 rounded-3xl">
-            <p class="text-gray-500 mb-4 text-xs">انسخ رابط فيديو يوتيوب أو Shorts وضعه هنا:</p>
-            <input type="text" id="inp-yt" placeholder="https://youtube.com/shorts/..." class="w-full bg-black p-5 rounded-xl border border-white/10 mb-6 text-white outline-none focus:border-red-600">
-            <button onclick="addVideo()" class="w-full bg-[#fe2c55] py-5 rounded-xl font-black">تأكيد النشر</button>
-        </div>
-    </div>
-
-    <!-- صفحة الملف الشخصي -->
-    <div id="pg-profile" class="overlay">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black">حسابي</h2>
-            <span class="text-3xl" onclick="goHome()">✕</span>
-        </div>
-        <div class="flex items-center gap-4 mb-10">
-            <div id="my-img" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-white/20 overflow-hidden"></div>
-            <div>
-                <h3 id="my-name" class="font-black text-xl">...</h3>
-                <p id="my-id" class="text-xs text-gray-500"></p>
-            </div>
-        </div>
-        <h3 class="font-bold text-gray-400 mb-4 border-b border-white/10 pb-2">المحفوظات</h3>
-        <div id="my-likes" class="grid grid-cols-3 gap-1 overflow-y-auto">
-            <!-- قائمة اللايكات -->
-        </div>
-    </div>
-
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-    <script>
-        const firebaseConfig = JSON.parse(__firebase_config);
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const tg = window.Telegram.WebApp;
-
-        let user = null, swiper, players = {}, videos = [], likedIds = [];
-
-        async function login() {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await auth.signInWithCustomToken(__initial_auth_token);
-            } else {
-                await auth.signInAnonymously();
-            }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #000;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
         }
 
-        auth.onAuthStateChanged(u => {
+        .video-container {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+            background: #000;
+        }
+
+        #player {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.6);
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .glass-ui {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .action-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .action-button:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 65px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0));
+            z-index: 100;
+        }
+
+        .progress-container {
+            position: fixed;
+            top: 15px;
+            left: 10%;
+            width: 80%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            z-index: 1000;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #22c55e;
+            border-radius: 2px;
+            transition: width 1s linear;
+        }
+
+        .reward-badge {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(34, 197, 94, 0.9);
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, onSnapshot, addDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tiktok-ton-final';
+
+        // State
+        let user = null;
+        let userData = {};
+        let videos = [];
+        let currentIndex = 0;
+        let player;
+        let watchTime = 0;
+        let isRewarded = false;
+        let timerId = null;
+
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Auth
+        onAuthStateChanged(auth, async (u) => {
             if (u) {
                 user = u;
-                syncData();
-                fetchContent();
-                document.getElementById('link-share').innerText = `https://t.me/FogrenerBot?start=${u.uid}`;
+                loadData();
+            } else {
+                await signInAnonymously(auth);
             }
         });
 
-        function syncData() {
-            const path = `/artifacts/${appId}/users/${user.uid}/profile/vFINAL_TG`;
-            db.doc(path).onSnapshot(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const b = (data.balance || 0).toFixed(4);
-                    document.getElementById('txt-bal-top').innerText = b;
-                    document.getElementById('txt-bal-wallet').innerText = `$${b}`;
-                    likedIds = data.likedVideos || [];
-                    
-                    document.getElementById('my-name').innerText = tg.initDataUnsafe?.user?.first_name || "مستخدم فقرينر";
-                    document.getElementById('my-id').innerText = user.uid;
-                    document.getElementById('my-img').innerHTML = `<img src="https://api.dicebear.com/7.x/identicon/svg?seed=${user.uid}" class="w-full h-full">`;
-                    renderProfileGrid();
+        async function loadData() {
+            // User Profile
+            const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main');
+            onSnapshot(profileRef, (snap) => {
+                if (snap.exists()) {
+                    userData = snap.data();
+                    renderUI();
                 } else {
-                    db.doc(path).set({ balance: 0, likedVideos: [] });
+                    setDoc(profileRef, {
+                        balance: 0,
+                        likedVideos: [],
+                        username: tg.initDataUnsafe?.user?.username || "user",
+                        name: tg.initDataUnsafe?.user?.first_name || "مستخدم"
+                    });
                 }
             });
-        }
 
-        async function fetchContent() {
-            const snap = await db.collection(`/artifacts/${appId}/public/data/vFINAL_TG_CONTENT`).get();
-            videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            
-            const container = document.getElementById('main-feed');
-            if (videos.length === 0) {
-                container.innerHTML = `<div class="swiper-slide flex items-center justify-center text-zinc-600">كن أول من ينشر فيديو هنا!</div>`;
-                return;
-            }
-
-            container.innerHTML = videos.map((v, i) => `
-                <div class="swiper-slide">
-                    <div class="video-box" id="box-${i}">
-                        <div id="player-${i}" class="yt-frame"></div>
-                    </div>
-                    <div class="sidebar">
-                        <div class="action-item" onclick="handleLike('${v.id}')">
-                            <span class="btn-icon ${likedIds.includes(v.id) ? 'liked' : ''}" id="icon-${v.id}">❤️</span>
-                            <span class="text-xs font-black" id="count-${v.id}">${v.likes || 0}</span>
-                        </div>
-                        <div class="action-item" onclick="alert('تم نسخ الرابط لنشره')">
-                            <span class="btn-icon">🚀</span>
-                            <span class="text-[10px]">مشاركة</span>
-                        </div>
-                    </div>
-                    <div class="absolute bottom-[90px] left-5 right-20 pointer-events-none z-50">
-                        <h3 class="font-black text-xl mb-1 shadow-black">@${v.author}</h3>
-                        <p class="text-sm opacity-80 shadow-black">شاهد لتربح الدولارات 💰</p>
-                    </div>
-                </div>
-            `).join('');
-
-            initSwiper();
-        }
-
-        function initSwiper() {
-            swiper = new Swiper(".mySwiper", {
-                direction: "vertical",
-                on: { slideChange: () => { stopAll(); play(swiper.activeIndex); } }
+            // Videos
+            const vidsCol = collection(db, 'artifacts', appId, 'public', 'data', 'videos');
+            onSnapshot(vidsCol, (snap) => {
+                videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (videos.length > 0 && !player) initYoutube();
             });
+        }
 
-            // تهيئة لاعبي يوتيوب
-            videos.forEach((v, i) => {
-                players[i] = new YT.Player(`player-${i}`, {
-                    videoId: v.videoId,
-                    playerVars: { 
-                        autoplay: 0, 
-                        controls: 0, 
-                        modestbranding: 1, 
-                        playsinline: 1, 
-                        loop: 1,
-                        disablekb: 1,
-                        fs: 0
-                    },
-                    events: { 'onStateChange': (e) => startEarning(e) }
-                });
+        function initYoutube() {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.body.appendChild(tag);
+        }
+
+        window.onYouTubeIframeAPIReady = () => {
+            player = new YT.Player('player', {
+                videoId: videos[currentIndex].youtubeId,
+                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'iv_load_policy': 3 },
+                events: { 'onStateChange': handleStateChange }
             });
-            setTimeout(() => play(0), 1500);
-        }
-
-        let profitTimer = null;
-        function startEarning(e) {
-            if (e.data === YT.PlayerState.PLAYING) {
-                profitTimer = setInterval(() => {
-                    db.doc(`/artifacts/${appId}/users/${user.uid}/profile/vFINAL_TG`).update({
-                        balance: firebase.firestore.FieldValue.increment(0.0001)
-                    });
-                }, 5000);
-            } else { clearInterval(profitTimer); }
-        }
-
-        async function handleLike(id) {
-            const uRef = db.doc(`/artifacts/${appId}/users/${user.uid}/profile/vFINAL_TG`);
-            const vRef = db.doc(`/artifacts/${appId}/public/data/vFINAL_TG_CONTENT/${id}`);
-            const isLiked = likedIds.includes(id);
-
-            if (isLiked) {
-                await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayRemove(id) });
-                await vRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
-            } else {
-                await uRef.update({ likedVideos: firebase.firestore.FieldValue.arrayUnion(id) });
-                await vRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
-            }
-            tg.HapticFeedback.impactOccurred('medium');
-            
-            // تحديث الواجهة فورياً
-            const icon = document.getElementById(`icon-${id}`);
-            const count = document.getElementById(`count-${id}`);
-            icon.classList.toggle('liked');
-            count.innerText = parseInt(count.innerText) + (isLiked ? -1 : 1);
-        }
-
-        async function addVideo() {
-            const url = document.getElementById('inp-yt').value;
-            const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if (!vidId) return alert("الرابط غير صحيح");
-
-            await db.collection(`/artifacts/${appId}/public/data/vFINAL_TG_CONTENT`).add({
-                videoId: vidId,
-                author: tg.initDataUnsafe?.user?.first_name || "Guest",
-                likes: 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            location.reload();
-        }
-
-        function renderProfileGrid() {
-            const grid = document.getElementById('my-likes');
-            grid.innerHTML = videos.filter(v => likedIds.includes(v.id)).map(v => `
-                <div class="grid-item">
-                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover">
-                </div>
-            `).join('');
-        }
-
-        function play(i) { players[i]?.playVideo?.(); }
-        function stopAll() { Object.values(players).forEach(p => p.pauseVideo?.()); clearInterval(profitTimer); }
-        
-        function openPage(id) {
-            stopAll();
-            document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
-            document.getElementById(`pg-${id}`).classList.add('active');
-            
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            const navId = id === 'wallet' ? 'm-wallet' : `m-${id}`;
-            document.getElementById(navId).classList.add('active');
-        }
-
-        function goHome() {
-            document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById('m-home').classList.add('active');
-            if(swiper) play(swiper.activeIndex);
-        }
-
-        function copyRefLink() {
-            const text = document.getElementById('link-share').innerText;
-            const el = document.createElement('textarea'); el.value = text;
-            document.body.appendChild(el); el.select(); document.execCommand('copy');
-            document.body.removeChild(el); alert("تم نسخ الرابط! ابعته لصحابك واربح");
-        }
-
-        document.getElementById('btn-notif').onclick = () => {
-            document.getElementById('dot-notif').style.display = 'none';
-            alert("إشعار فقرينر: تم إصلاح مشكلة اللمس في تليجرام!");
         };
 
-        window.onload = login;
+        function handleStateChange(e) {
+            if (e.data == YT.PlayerState.PLAYING) {
+                if (!timerId) timerId = setInterval(tick, 1000);
+            } else {
+                clearInterval(timerId);
+                timerId = null;
+            }
+        }
+
+        async function tick() {
+            watchTime++;
+            const progress = (watchTime / 10) * 100;
+            document.getElementById('progress-bar').style.width = Math.min(progress, 100) + "%";
+
+            if (watchTime >= 10 && !isRewarded) {
+                isRewarded = true;
+                const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main');
+                await updateDoc(profileRef, { balance: increment(0.01) });
+                document.getElementById('reward-badge').style.display = 'block';
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function renderUI() {
+            document.getElementById('balance-text').innerText = (userData.balance || 0).toFixed(3);
+            document.getElementById('prof-name').innerText = userData.name;
+            document.getElementById('prof-user').innerText = "@" + (userData.username || "user");
+            
+            if (videos[currentIndex]) {
+                document.getElementById('creator-name').innerText = videos[currentIndex].creatorName || "مجهول";
+                const isLiked = userData.likedVideos?.includes(videos[currentIndex].id);
+                document.getElementById('heart-btn').style.color = isLiked ? '#ef4444' : '#fff';
+            }
+        }
+
+        // Global Actions
+        window.nextVideo = () => {
+            if (currentIndex < videos.length - 1) {
+                currentIndex++;
+                watchTime = 0;
+                isRewarded = false;
+                document.getElementById('progress-bar').style.width = "0%";
+                document.getElementById('reward-badge').style.display = 'none';
+                player.loadVideoById(videos[currentIndex].youtubeId);
+                renderUI();
+            }
+        };
+
+        window.toggleLike = async () => {
+            const vidId = videos[currentIndex].id;
+            let likes = userData.likedVideos || [];
+            if (likes.includes(vidId)) {
+                likes = likes.filter(id => id !== vidId);
+            } else {
+                likes.push(vidId);
+            }
+            const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'main');
+            await updateDoc(profileRef, { likedVideos: likes });
+            tg.HapticFeedback.impactOccurred('light');
+        };
+
+        window.switchPage = (page) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById(page + '-page').classList.remove('hidden');
+        };
+
+        window.handlePublish = async () => {
+            const url = document.getElementById('yt-url').value;
+            const reg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const m = url.match(reg);
+            const id = (m && m[2].length === 11) ? m[2] : null;
+
+            if (id) {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'videos'), {
+                    youtubeId: id,
+                    creatorName: userData.name,
+                    timestamp: Date.now()
+                });
+                document.getElementById('yt-url').value = "";
+                switchPage('feed');
+            }
+        };
     </script>
+</head>
+<body>
+
+    <!-- Progress & Rewards -->
+    <div class="progress-container"><div id="progress-bar"></div></div>
+    <div id="reward-badge" class="reward-badge">تم ربح 0.01 TON 💰</div>
+
+    <!-- Feed Page -->
+    <div id="feed-page" class="page video-container">
+        <div id="player"></div>
+        
+        <!-- Right Actions -->
+        <div class="absolute right-4 bottom-32 flex flex-col items-center z-50">
+            <div class="action-button shadow-lg" onclick="toggleLike()">
+                <i id="heart-btn" class="fas fa-heart text-xl"></i>
+            </div>
+            <div class="action-button shadow-lg" onclick="nextVideo()">
+                <i class="fas fa-step-forward text-xl"></i>
+            </div>
+            <div class="action-button shadow-lg">
+                <i class="fas fa-share text-xl text-blue-400"></i>
+            </div>
+        </div>
+
+        <!-- Video Info -->
+        <div class="absolute bottom-24 left-5 right-16 z-40 text-right pointer-events-none">
+            <h3 class="font-bold text-lg mb-1" id="creator-name">تحميل...</h3>
+            <p class="text-sm text-gray-300">شاهد الفيديو واربح العملات الرقمية مجاناً 🚀</p>
+        </div>
+    </div>
+
+    <!-- Publish Page -->
+    <div id="publish-page" class="page hidden h-screen bg-neutral-900 p-8 flex flex-col justify-center">
+        <div class="bg-white/5 p-6 rounded-3xl border border-white/10 text-center">
+            <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-4"></i>
+            <h2 class="text-xl font-bold mb-2">نشر فيديو جديد</h2>
+            <p class="text-sm text-gray-400 mb-6">ضع رابط اليوتيوب هنا وسيقوم التطبيق بالباقي</p>
+            <input id="yt-url" type="text" placeholder="https://youtube.com/..." 
+                   class="w-full bg-black/40 border border-white/10 p-4 rounded-2xl mb-4 text-center outline-none focus:border-blue-500">
+            <button onclick="handlePublish()" class="w-full bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl font-bold transition-all">نشر الفيديو</button>
+        </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div id="profile-page" class="page hidden h-screen bg-black overflow-y-auto pb-24">
+        <div class="relative h-48 bg-gradient-to-b from-blue-900/40 to-black"></div>
+        <div class="px-8 -mt-12">
+            <div class="flex justify-between items-end mb-6">
+                <div class="w-24 h-24 rounded-full bg-neutral-800 border-4 border-black flex items-center justify-center text-3xl">👤</div>
+                <div class="flex gap-4 mb-2">
+                    <div class="text-center">
+                        <div class="font-bold" id="balance-text">0.000</div>
+                        <div class="text-[10px] text-gray-500 uppercase">رصيد TON</div>
+                    </div>
+                </div>
+            </div>
+            
+            <h2 class="text-2xl font-bold" id="prof-name">...</h2>
+            <p class="text-blue-500 mb-6" id="prof-user">@user</p>
+
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <div class="text-xs text-gray-400">المتابعين</div>
+                    <div class="text-lg font-bold">0</div>
+                </div>
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <div class="text-xs text-gray-400">أرباح اليوم</div>
+                    <div class="text-lg font-bold text-green-500">+0.00</div>
+                </div>
+            </div>
+
+            <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-history text-blue-500"></i> فيديوهات نالت إعجابك</h3>
+            <div class="grid grid-cols-3 gap-2">
+                <div class="aspect-[9/16] bg-neutral-900 rounded-xl border border-white/5 flex items-center justify-center">
+                    <i class="fas fa-play text-white/10"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button onclick="switchPage('feed')" class="flex flex-col items-center">
+            <i class="fas fa-home text-xl"></i>
+            <span class="text-[9px] mt-1">الرئيسية</span>
+        </button>
+        <button onclick="switchPage('publish')" class="flex flex-col items-center">
+            <div class="w-12 h-8 bg-gradient-to-r from-blue-500 via-white to-red-500 rounded-lg flex items-center justify-center">
+                <i class="fas fa-plus text-black text-sm"></i>
+            </div>
+        </button>
+        <button onclick="switchPage('profile')" class="flex flex-col items-center">
+            <i class="fas fa-user text-xl text-gray-500"></i>
+            <span class="text-[9px] mt-1 text-gray-500">الملف</span>
+        </button>
+    </nav>
+
 </body>
 </html>
