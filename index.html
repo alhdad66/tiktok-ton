@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener - Unfreeze Build</title>
+    <title>Fogrener - Instant Access</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,86 +17,81 @@
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* كونسول مراقبة الأخطاء - يظهر عند اللزوم */
-        #debug-box { 
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background: rgba(0,0,0,0.95); z-index: 9999; display: none; 
-            padding: 20px; font-family: monospace; font-size: 12px; color: #0f0; 
-            overflow-y: auto; pointer-events: auto;
-        }
-
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 70px; background: #000; border-top: 1px solid #111; display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
-        .nav-item { color: #444; font-size: 11px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 70px; background: #050505; border-top: 1px solid #111; display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
+        .nav-item { color: #555; font-size: 11px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
         .nav-item.active { color: #fff; }
-        
-        .sub-page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; padding: 25px; overflow-y: auto; }
+
+        .sub-page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; padding: 20px; overflow-y: auto; }
         .sub-page.active { display: flex; flex-direction: column; }
+
+        /* Console Style */
+        #debug-box { position: fixed; top: 0; left: 0; right: 0; height: 40%; background: rgba(0,0,0,0.9); z-index: 9999; display: none; padding: 15px; font-family: monospace; font-size: 10px; color: #0f0; overflow-y: auto; border-bottom: 1px solid #333; }
+        
+        .loading-ring { width: 50px; height: 50px; border: 3px solid #333; border-top-color: #fe2c55; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(3600deg); } }
     </style>
 </head>
 <body>
 
+    <!-- Debug Log -->
     <div id="debug-box">
-        <div class="flex justify-between items-center border-b border-zinc-800 mb-4 pb-2">
-            <span class="font-bold">تقرير الحالة (Debug)</span>
-            <button onclick="document.getElementById('debug-box').style.display='none'" class="text-red-500 font-bold">إغلاق ×</button>
-        </div>
-        <div id="debug-logs"></div>
+        <div class="flex justify-between mb-2"><b>DEBUG LOG</b> <button onclick="toggleDebug()">[CLOSE]</button></div>
+        <div id="logs"></div>
     </div>
 
-    <div id="loading-screen" class="fixed inset-0 z-[500] flex flex-col items-center justify-center bg-black">
-        <div class="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p id="loading-text" class="text-zinc-500 cursor-pointer" onclick="toggleDebug()">جاري مزامنة البيانات...</p>
-        <button id="emergency-btn" class="mt-10 text-xs text-red-800 hidden" onclick="location.reload()">إعادة تحميل إجبارية</button>
-    </div>
-
-    <div id="main-ui" class="opacity-0 transition-opacity duration-500">
+    <!-- UI Overlay -->
+    <div id="main-content" class="h-screen w-screen relative">
+        <!-- Top Stats -->
         <div class="fixed top-10 left-5 right-5 flex justify-between items-center z-[100]">
-            <div class="p-2 bg-zinc-900 rounded-full" onclick="toggleDebug()">⚙️</div>
-            <div class="px-4 py-2 bg-zinc-900 rounded-full text-green-400 font-black" id="top-bal">0.0000 💰</div>
+            <div class="p-2 bg-zinc-900/80 rounded-full" onclick="toggleDebug()">⚙️</div>
+            <div id="balance-pill" class="px-4 py-2 bg-zinc-900/80 rounded-full text-green-400 font-black border border-white/5">0.0000 💰</div>
         </div>
 
-        <div class="swiper mySwiper h-screen">
-            <div class="swiper-wrapper" id="feed"></div>
+        <!-- Video Feed Container -->
+        <div id="video-placeholder" class="h-full w-full flex flex-col items-center justify-center text-zinc-700 bg-zinc-950">
+            <div class="loading-ring mb-4"></div>
+            <p id="status-text">جاري الاتصال بالسيرفر...</p>
+        </div>
+        
+        <div class="swiper mySwiper h-full w-full hidden" id="swiper-container">
+            <div class="swiper-wrapper" id="feed-wrapper"></div>
         </div>
 
+        <!-- Navbar -->
         <div class="nav-bar">
-            <div class="nav-item active" onclick="goHome()"><span>🏠</span><span>الرئيسية</span></div>
-            <div class="nav-item" onclick="openP('wallet')"><span>💰</span><span>الأرباح</span></div>
-            <div class="nav-item" onclick="openP('profile')"><span>👤</span><span>الملف</span></div>
+            <div class="nav-item active" onclick="showPage('home')"><span>🏠</span><span>الرئيسية</span></div>
+            <div class="nav-item" onclick="showPage('wallet')"><span>💰</span><span>الأرباح</span></div>
+            <div class="nav-item" onclick="showPage('profile')"><span>👤</span><span>الملف</span></div>
         </div>
     </div>
 
-    <div id="p-wallet" class="sub-page">
-        <h2 class="text-3xl font-black mb-10">المحفظة</h2>
-        <div class="bg-zinc-900 p-8 rounded-3xl text-center">
-            <p class="text-zinc-500 mb-2 text-sm">الرصيد الحالي</p>
-            <h1 class="text-5xl font-black text-green-400 mb-8" id="p-bal">$0.0000</h1>
-            <button class="w-full bg-white text-black py-4 rounded-2xl font-black" onclick="alert('السحب متاح قريباً')">طلب سحب</button>
+    <!-- Sub Pages -->
+    <div id="page-wallet" class="sub-page">
+        <div class="flex justify-between items-center mb-10"><h2 class="text-3xl font-black">المحفظة</h2><span class="text-2xl" onclick="showPage('home')">✕</span></div>
+        <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-white/5">
+            <p class="text-zinc-500 mb-2">الرصيد الكلي</p>
+            <h1 class="text-5xl font-black text-green-400" id="wallet-bal">$0.0000</h1>
         </div>
-        <button class="mt-auto text-zinc-600" onclick="goHome()">رجوع</button>
     </div>
 
-    <div id="p-profile" class="sub-page">
-        <h2 class="text-3xl font-black mb-10">الملف الشخصي</h2>
-        <div class="flex items-center gap-5 mb-10">
-            <div id="u-avatar" class="w-20 h-20 rounded-full bg-zinc-800 border-2 border-red-500 overflow-hidden"></div>
+    <div id="page-profile" class="sub-page">
+        <div class="flex justify-between items-center mb-10"><h2 class="text-3xl font-black">حسابي</h2><span class="text-2xl" onclick="showPage('home')">✕</span></div>
+        <div class="flex items-center gap-4 mb-8">
+            <div id="user-img" class="w-16 h-16 rounded-full bg-zinc-800 overflow-hidden"></div>
             <div>
-                <h3 id="u-name" class="font-black text-xl">...</h3>
-                <p id="u-id" class="text-xs text-zinc-600 font-mono"></p>
+                <h3 id="user-name" class="font-bold text-xl">...</h3>
+                <p id="user-id" class="text-[10px] text-zinc-600 font-mono"></p>
             </div>
         </div>
-        <button class="mt-auto text-zinc-600" onclick="goHome()">رجوع</button>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
     <script>
-        function log(m, type="info") {
-            const d = document.getElementById('debug-logs');
-            const color = type === 'error' ? 'text-red-500' : 'text-zinc-400';
-            d.innerHTML = `<div class="mb-2"><span class="${color}">> ${m}</span></div>` + d.innerHTML;
-            if(type === 'error') {
-                document.getElementById('debug-box').style.display = 'block';
-                document.getElementById('emergency-btn').classList.remove('hidden');
-            }
+        function log(m, success = true) {
+            const logs = document.getElementById('logs');
+            logs.innerHTML = `<div><span style="color:${success?'#0f0':'#f00'}">${new Date().toLocaleTimeString()}</span>: ${m}</div>` + logs.innerHTML;
         }
 
         function toggleDebug() {
@@ -104,57 +99,79 @@
             b.style.display = b.style.display === 'none' ? 'block' : 'none';
         }
 
-        // تهيئة فورية
+        // 1. Initial Setup
         const tg = window.Telegram.WebApp;
         tg.expand();
-        log("بدء تشغيل Telegram WebApp...");
+        
+        const tgUser = tg.initDataUnsafe?.user;
+        document.getElementById('user-name').innerText = tgUser?.first_name || "Guest";
+        document.getElementById('user-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser?.id || '1'}" class="w-full h-full">`;
 
+        // 2. Firebase Async Start
         const config = JSON.parse(__firebase_config);
         firebase.initializeApp(config);
         const db = firebase.firestore();
-        
-        // عرض اسم المستخدم فوراً من تليجرام
-        const userTg = tg.initDataUnsafe?.user;
-        document.getElementById('u-name').innerText = userTg?.first_name || "مستخدم فقرينر";
-        document.getElementById('u-avatar').innerHTML = `<img src="https://api.dicebear.com/7.x/identicon/svg?seed=${userTg?.id || '1'}" class="w-full h-full">`;
+        const auth = firebase.auth();
 
-        async function startApp() {
+        async function initAuth() {
+            log("بدء محاولة الدخول...");
             try {
-                log("محاولة تسجيل الدخول...");
-                const u = await firebase.auth().signInAnonymously();
-                log("تم الدخول بنجاح ID: " + u.user.uid, "success");
-                
-                document.getElementById('u-id').innerText = u.user.uid.substring(0,15);
-                
-                // جلب البيانات مع Timeout
-                const dataPromise = db.collection(`/artifacts/${__app_id}/public/data/vULTRAs_Vids`).get();
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: الخادم لا يستجيب")), 8000));
+                // محاولة الدخول في الخلفية دون تعطيل الواجهة
+                const authTask = (__initial_auth_token) ? 
+                    auth.signInWithCustomToken(__initial_auth_token) : 
+                    auth.signInAnonymously();
 
-                const snap = await Promise.race([dataPromise, timeoutPromise]);
-                log("تم استلام بيانات الفيديوهات: " + snap.size);
-                
-                // إظهار الواجهة
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('main-ui').classList.remove('opacity-0');
-                
-            } catch (e) {
-                log("فشل في بدء التطبيق: " + e.message, "error");
-                // حتى لو فشل، نظهر الواجهة عشان الأزرار تشتغل
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('main-ui').classList.remove('opacity-0');
+                authTask.then(u => {
+                    log("تم الدخول بنجاح: " + u.user.uid);
+                    document.getElementById('user-id').innerText = u.user.uid;
+                    loadData(u.user.uid);
+                }).catch(e => {
+                    log("فشل الدخول، المحاولة كضيف: " + e.message, false);
+                    auth.signInAnonymously();
+                });
+
+            } catch (err) {
+                log("خطأ غير متوقع: " + err.message, false);
             }
         }
 
-        function openP(id) {
-            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
-            document.getElementById(`p-${id}`).classList.add('active');
+        function loadData(uid) {
+            log("جاري جلب الفيديوهات من Firestore...");
+            db.collection(`/artifacts/${__app_id}/public/data/vULTRAs_Vids`).get().then(snap => {
+                log("عدد الفيديوهات: " + snap.size);
+                if(snap.size > 0) {
+                    renderFeed(snap.docs.map(d => d.data()));
+                } else {
+                    document.getElementById('status-text').innerText = "لا توجد فيديوهات حالياً.";
+                }
+            }).catch(e => {
+                log("خطأ في جلب البيانات: " + e.message, false);
+                document.getElementById('status-text').innerText = "فشل الاتصال بالقاعدة.";
+            });
         }
 
-        function goHome() {
-            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+        function renderFeed(vids) {
+            const wrapper = document.getElementById('feed-wrapper');
+            wrapper.innerHTML = vids.map((v, i) => `
+                <div class="swiper-slide bg-black flex items-center justify-center">
+                    <div id="player-${i}" class="w-full h-full pointer-events-none"></div>
+                    <div class="absolute inset-0 z-10" onclick="togglePlay(${i})"></div>
+                </div>
+            `).join('');
+            
+            document.getElementById('video-placeholder').style.display = 'none';
+            document.getElementById('swiper-container').classList.remove('hidden');
+            
+            new Swiper(".mySwiper", { direction: "vertical" });
+            log("تم تشغيل واجهة الفيديوهات.");
         }
 
-        window.onload = startApp;
+        function showPage(id) {
+            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+            if(id !== 'home') document.getElementById(`page-${id}`).classList.add('active');
+        }
+
+        window.onload = initAuth;
     </script>
 </body>
 </html>
