@@ -3,347 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>فقرينر - النظام المتكامل</title>
+    <title>فقرينر - النسخة الأصلية</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        :root { --primary: #ff0000; --bg: #0b0b0b; }
-        body { background: var(--bg); color: white; font-family: 'Cairo', sans-serif; margin: 0; padding-bottom: 90px; }
+        body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; overflow: hidden; }
+        .swiper { height: 100vh; width: 100vw; }
+        .video-container { position: relative; width: 100%; height: 100%; background: #000; }
+        .yt-placeholder { width: 100%; height: 100%; pointer-events: none; }
         
-        /* Notifications System */
-        #notification-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; }
-        .toast { background: rgba(255, 0, 0, 0.9); color: white; padding: 10px 20px; border-radius: 12px; margin-bottom: 10px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(255,0,0,0.3); animation: slideDown 0.3s ease, fadeOut 0.3s ease 2.7s forwards; }
-        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
+        /* Side Icons */
+        .side-bar {
+            position: absolute;
+            right: 12px;
+            bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            z-index: 10;
+        }
+        .icon-group { text-align: center; }
+        .icon-circle { 
+            width: 45px; height: 45px; 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
 
-        /* Video Card Design */
-        .video-card { background: #151515; border-radius: 20px; overflow: hidden; border: 1px solid #222; margin-bottom: 20px; }
-        .video-container { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
-        .video-info { padding: 15px; }
-        
-        /* Fixed Header */
-        .header { position: sticky; top: 0; background: var(--bg); z-index: 1000; padding: 15px; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; }
-        .balance-badge { background: linear-gradient(90deg, #ff0000, #b30000); padding: 8px 15px; border-radius: 30px; font-weight: 900; font-size: 16px; }
+        /* Bottom Nav */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 65px;
+            background: #000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid #111;
+            z-index: 20;
+        }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #777; }
+        .nav-btn.active { color: #fff; }
+        .add-icon { background: #fff; color: #000; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 18px; }
 
-        /* Overlays */
-        .page-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: none; padding: 20px; padding-top: 40px; overflow-y: auto; }
-        .page-overlay.active { display: block; }
-        
-        /* Tab buttons */
-        .tab-btn { flex: 1; padding: 12px; text-align: center; border-bottom: 3px solid transparent; opacity: 0.5; font-weight: bold; }
-        .tab-btn.active { border-color: var(--primary); opacity: 1; color: var(--primary); }
-
-        /* Buttons */
-        .btn-action { background: #222; border-radius: 12px; padding: 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; transition: 0.2s; }
-        .btn-action.active { color: var(--primary); background: rgba(255,0,0,0.1); }
-
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #111; border-top: 1px solid #222; display: flex; justify-content: space-around; align-items: center; z-index: 3000; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; opacity: 0.5; }
-        .nav-item.active { opacity: 1; color: var(--primary); }
+        /* Overlay Pages */
+        .page {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 100;
+            display: none;
+            padding: 20px;
+        }
+        .page.active { display: block; }
     </style>
 </head>
 <body>
 
-    <!-- Notification Container -->
-    <div id="notification-box"></div>
-
-    <!-- Header -->
-    <div class="header">
-        <h1 class="text-2xl font-black text-red-600">فقرينر</h1>
-        <div class="balance-badge" id="header-balance">$0.0000</div>
-    </div>
-
-    <!-- Main Content (Home) -->
-    <div id="home-page" class="p-4">
-        <div id="feed-container" class="space-y-6">
-            <div class="text-center py-20 opacity-30">جاري تحميل المحتوى...</div>
+    <!-- Header Stats -->
+    <div class="fixed top-4 left-0 right-0 z-50 flex justify-center">
+        <div class="bg-black/40 backdrop-blur px-4 py-1 rounded-full border border-white/10 flex items-center gap-2">
+            <span class="text-yellow-500">💰</span>
+            <span id="top-balance" class="font-bold">0.0000</span>
         </div>
     </div>
 
-    <!-- User Profile Overlay (Viewing Others) -->
-    <div id="user-view-overlay" class="page-overlay">
-        <button onclick="closeOverlay('user-view')" class="mb-6 text-red-500 font-bold">✕ إغلاق</button>
-        <div class="flex flex-col items-center mb-8">
-            <div id="uv-avatar" class="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center text-4xl font-bold mb-4">?</div>
-            <h2 id="uv-name" class="text-2xl font-black">اسم المستخدم</h2>
-            <div class="flex gap-8 mt-4 text-center">
-                <div><p id="uv-followers" class="text-xl font-black">0</p><p class="text-xs opacity-50">متابع</p></div>
-                <div><p id="uv-vids-count" class="text-xl font-black">0</p><p class="text-xs opacity-50">فيديو</p></div>
-            </div>
-            <button id="uv-follow-btn" class="w-full max-w-[250px] bg-red-600 py-3 rounded-xl mt-6 font-bold">متابعة</button>
-        </div>
-        <div id="uv-grid" class="grid grid-cols-3 gap-1"></div>
-    </div>
-
-    <!-- My Profile Page -->
-    <div id="my-profile-overlay" class="page-overlay">
-        <h2 class="text-3xl font-black mb-8">حسابي الشخصي</h2>
-        <div class="bg-[#151515] p-6 rounded-3xl text-center mb-6">
-            <p class="text-xs opacity-40 mb-1">الرصيد القابل للسحب</p>
-            <h1 id="my-balance-large" class="text-5xl font-black text-red-500 mb-6">$0.0000</h1>
-            <button onclick="notify('الحد الأدنى للسحب 10 دولار')" class="w-full bg-red-600 py-4 rounded-2xl font-black">طلب سحب 💳</button>
-        </div>
-
-        <div class="flex mb-4">
-            <div onclick="switchMyTab('vids')" id="tab-vids" class="tab-btn active">فيديوهاتي</div>
-            <div onclick="switchMyTab('following')" id="tab-following" class="tab-btn">أتابعهم</div>
-            <div onclick="switchMyTab('followers')" id="tab-followers" class="tab-btn">المتابعون</div>
-        </div>
-        <div id="my-tab-content" class="space-y-3"></div>
-    </div>
-
-    <!-- Friends Page -->
-    <div id="friends-overlay" class="page-overlay">
-        <h2 class="text-3xl font-black mb-6">نظام الإحالة 👥</h2>
-        <div class="bg-[#151515] p-8 rounded-3xl border border-white/5">
-            <p class="text-sm opacity-60 mb-4">انسخ رابطك وشاركه مع أصدقائك، ستحصل على 5% من أرباحهم مدى الحياة!</p>
-            <div id="ref-link" class="bg-black p-4 rounded-xl border border-red-900/30 text-[10px] mb-6 font-mono text-red-400 break-all">...</div>
-            <button onclick="copyRef()" class="w-full bg-white text-black py-4 rounded-2xl font-black">نسخ الرابط 📋</button>
-        </div>
-    </div>
-
-    <!-- Publish Page -->
-    <div id="publish-overlay" class="page-overlay">
-        <h2 class="text-3xl font-black mb-8 text-red-600">نشر فيديو جديد</h2>
-        <div class="bg-[#151515] p-6 rounded-3xl">
-            <p class="text-xs opacity-50 mb-4">ضع رابط اليوتيوب هنا وسيقوم النظام بتنسيقه تلقائياً</p>
-            <input id="yt-url" type="text" placeholder="https://youtube.com/watch?v=..." class="w-full bg-black border border-white/10 p-5 rounded-2xl mb-6 outline-none text-red-500 font-bold">
-            <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-2xl font-black text-lg">تأكيد النشر 🚀</button>
+    <!-- Main Swiper Feed -->
+    <div class="swiper mySwiper">
+        <div class="swiper-wrapper" id="feed-container">
+            <!-- Videos inject here -->
         </div>
     </div>
 
     <!-- Bottom Nav -->
     <div class="nav-bar">
-        <div onclick="navTo('home')" id="n-home" class="nav-item active">🏠<span class="mt-1">الرئيسية</span></div>
-        <div onclick="navTo('friends')" id="n-friends" class="nav-item">👥<span class="mt-1">الأصدقاء</span></div>
-        <div onclick="navTo('publish')" class="w-12 h-10 bg-white rounded-xl flex items-center justify-center text-black font-bold text-xl">+</div>
-        <div onclick="navTo('profile')" id="n-profile" class="nav-item">👤<span class="mt-1">حسابي</span></div>
+        <div class="nav-btn active" onclick="showPage('home')"><span>🏠</span><span>الرئيسية</span></div>
+        <div class="nav-btn" onclick="alert('قريباً')"><span>👥</span><span>الأصدقاء</span></div>
+        <div class="add-icon" onclick="showPage('add')">+</div>
+        <div class="nav-btn" onclick="showPage('wallet')"><span>💰</span><span>المحفظة</span></div>
+        <div class="nav-btn" onclick="showPage('profile')"><span>👤</span><span>الملف</span></div>
+    </div>
+
+    <!-- Wallet Page -->
+    <div id="page-wallet" class="page">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-xl font-bold">المحفظة</h1>
+            <button onclick="closePages()" class="text-2xl">✕</button>
+        </div>
+        <div class="bg-zinc-900 p-8 rounded-3xl text-center">
+            <p class="text-gray-400 mb-2">رصيدك الحالي</p>
+            <h2 class="text-5xl font-black text-green-500 mb-8" id="wallet-balance">$0.0000</h2>
+            <button onclick="alert('سيتم السحب قريباً')" class="w-full bg-white text-black py-4 rounded-xl font-bold">سحب الأرباح</button>
+        </div>
+    </div>
+
+    <!-- Add Video Page -->
+    <div id="page-add" class="page">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-xl font-bold">نشر فيديو جديد</h1>
+            <button onclick="closePages()" class="text-2xl">✕</button>
+        </div>
+        <input type="text" id="video-url" placeholder="رابط يوتيوب هنا..." class="w-full bg-zinc-900 p-4 rounded-xl border border-white/10 mb-4 outline-none">
+        <button onclick="publishVideo()" id="pub-btn" class="w-full bg-red-600 py-4 rounded-xl font-bold">نشر الآن</button>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
     <script>
-        const firebaseConfig = { apiKey: "", authDomain: "tik-ton-92124.firebaseapp.com", projectId: "tik-ton-92124" };
+        const firebaseConfig = JSON.parse(__firebase_config);
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const tg = window.Telegram.WebApp;
 
-        const uID = String(tg.initDataUnsafe?.user?.id || "887766");
-        const uName = tg.initDataUnsafe?.user?.first_name || "مستخدم";
-        let userLocal = {}, players = {}, rewardTimers = {};
+        let currentUser = null;
+        let players = {};
+        let swiper;
 
-        // Notifications System
-        function notify(msg) {
-            const box = document.getElementById('notification-box');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerText = msg;
-            box.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+        // Auth Logic (Rule 3)
+        async function startApp() {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await auth.signInWithCustomToken(__initial_auth_token);
+            } else {
+                await auth.signInAnonymously();
+            }
         }
 
-        async function init() {
-            document.getElementById('ref-link').innerText = `https://t.me/YourBot?start=${uID}`;
-            
-            db.collection("users").doc(uID).onSnapshot(doc => {
-                if(doc.exists) {
-                    userLocal = doc.data();
-                    updateUI();
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                initDataSync();
+                loadFeed();
+            }
+        });
+
+        function initDataSync() {
+            const userPath = `/artifacts/${appId}/users/${currentUser.uid}/profile/main`;
+            db.doc(userPath).onSnapshot(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const b = (data.balance || 0).toFixed(4);
+                    document.getElementById('top-balance').innerText = b;
+                    document.getElementById('wallet-balance').innerText = `$${b}`;
                 } else {
-                    db.collection("users").doc(uID).set({
-                        name: uName, balance: 0, following: [], followersCount: 0, likes: [], createdAt: new Date()
-                    });
+                    db.doc(userPath).set({ balance: 0, likes: 0, videos: 0 });
                 }
             });
-            loadFeed();
-        }
-
-        function updateUI() {
-            const b = (userLocal.balance || 0).toFixed(4);
-            document.getElementById('header-balance').innerText = `$${b}`;
-            document.getElementById('my-balance-large').innerText = `$${b}`;
         }
 
         async function loadFeed() {
-            const snap = await db.collection("shared_videos").orderBy("createdAt", "desc").get();
-            const cont = document.getElementById('feed-container');
+            const publicPath = `/artifacts/${appId}/public/data/videos`;
+            const snap = await db.collection(publicPath).get();
+            const videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
             
-            if(snap.empty) {
-                cont.innerHTML = `<div class="opacity-20 py-20">لا توجد فيديوهات منشورة</div>`;
+            const container = document.getElementById('feed-container');
+            if (videos.length === 0) {
+                container.innerHTML = `<div class="swiper-slide flex items-center justify-center">لا توجد فيديوهات حالياً</div>`;
                 return;
             }
 
-            cont.innerHTML = snap.docs.map((doc, i) => {
-                const v = doc.data();
-                const isLiked = (userLocal.likes || []).includes(doc.id);
-                return `
-                    <div class="video-card">
-                        <div class="video-container" id="player-${i}"></div>
-                        <div class="video-info">
-                            <div class="flex justify-between items-center mb-4">
-                                <div onclick="viewUser('${v.ownerId}')" class="flex items-center gap-2 cursor-pointer">
-                                    <div class="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center font-bold text-xs">${v.ownerName[0]}</div>
-                                    <span class="font-bold">@${v.ownerName}</span>
-                                </div>
-                                <button onclick="follow('${v.ownerId}')" class="text-[10px] border border-red-600 text-red-600 px-3 py-1 rounded-full">
-                                    ${(userLocal.following || []).includes(v.ownerId) ? 'متابع' : '+ متابعة'}
-                                </button>
+            container.innerHTML = videos.map((v, i) => `
+                <div class="swiper-slide">
+                    <div class="video-container">
+                        <div id="player-${i}" class="yt-placeholder"></div>
+                        <div class="side-bar">
+                            <div class="icon-group" onclick="likeVideo('${v.id}')">
+                                <div class="icon-circle text-red-500">❤️</div>
+                                <span class="text-xs font-bold">${v.likes || 0}</span>
                             </div>
-                            <div class="flex gap-4">
-                                <button onclick="likeVideo('${doc.id}')" class="btn-action ${isLiked ? 'active' : ''}">
-                                    ${isLiked ? '❤️' : '🤍'} <span>إعجاب</span>
-                                </button>
-                                <button onclick="copyRef()" class="btn-action">🔗 <span>مشاركة</span></button>
+                            <div class="icon-group">
+                                <div class="icon-circle">💬</div>
+                                <span class="text-xs font-bold">0</span>
+                            </div>
+                            <div class="icon-group">
+                                <div class="icon-circle">🚀</div>
+                                <span class="text-xs font-bold">مشاركة</span>
                             </div>
                         </div>
+                        <div class="absolute bottom-[80px] left-4 z-10">
+                            <h3 class="font-bold">@${v.author || 'User'}</h3>
+                            <p class="text-sm opacity-80">شاهد الفيديو لتربح النقاط!</p>
+                        </div>
                     </div>
-                `;
-            }).join('');
-
-            // Init Players
-            setTimeout(() => {
-                snap.docs.forEach((doc, i) => {
-                    const v = doc.data();
-                    players[i] = new YT.Player(`player-${i}`, {
-                        videoId: v.videoId,
-                        playerVars: { modestbranding: 1, rel: 0 },
-                        events: { 'onStateChange': (e) => handleReward(e, i) }
-                    });
-                });
-            }, 500);
-        }
-
-        function handleReward(e, i) {
-            if(e.data == 1) { // Playing
-                notify("جاري جمع الأرباح... استمر في المشاهدة 💰");
-                rewardTimers[i] = setInterval(async () => {
-                    await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(0.0005) });
-                    tg.HapticFeedback.impactOccurred('light');
-                }, 10000);
-            } else {
-                clearInterval(rewardTimers[i]);
-            }
-        }
-
-        async function follow(targetId) {
-            if(targetId === uID) return;
-            const isFollowing = (userLocal.following || []).includes(targetId);
-            const method = isFollowing ? 'arrayRemove' : 'arrayUnion';
-            const inc = isFollowing ? -1 : 1;
-            
-            await db.collection("users").doc(uID).update({ following: firebase.firestore.FieldValue[method](targetId) });
-            await db.collection("users").doc(targetId).update({ followersCount: firebase.firestore.FieldValue.increment(inc) });
-            
-            notify(isFollowing ? "تم إلغاء المتابعة" : "تمت المتابعة بنجاح ✅");
-        }
-
-        async function likeVideo(vidId) {
-            const isLiked = (userLocal.likes || []).includes(vidId);
-            const method = isLiked ? 'arrayRemove' : 'arrayUnion';
-            await db.collection("users").doc(uID).update({ likes: firebase.firestore.FieldValue[method](vidId) });
-            notify(isLiked ? "تمت إزالة الإعجاب" : "تم الإعجاب بالفيديو ❤️");
-        }
-
-        async function viewUser(targetId) {
-            const overlay = document.getElementById('user-view-overlay');
-            overlay.classList.add('active');
-            
-            const doc = await db.collection("users").doc(targetId).get();
-            if(!doc.exists) return;
-            const data = doc.data();
-            
-            document.getElementById('uv-name').innerText = data.name;
-            document.getElementById('uv-avatar').innerText = data.name[0];
-            document.getElementById('uv-followers').innerText = data.followersCount || 0;
-            
-            const isFollowing = (userLocal.following || []).includes(targetId);
-            const btn = document.getElementById('uv-follow-btn');
-            btn.innerText = isFollowing ? "إلغاء المتابعة" : "متابعة الحساب";
-            btn.onclick = () => { follow(targetId); viewUser(targetId); };
-
-            const vSnap = await db.collection("shared_videos").where("ownerId", "==", targetId).get();
-            document.getElementById('uv-vids-count').innerText = vSnap.size;
-            document.getElementById('uv-grid').innerHTML = vSnap.docs.map(v => `
-                <div class="aspect-square bg-[#1a1a1a] rounded-lg overflow-hidden border border-white/5">
-                    <img src="https://img.youtube.com/vi/${v.data().videoId}/mqdefault.jpg" class="w-full h-full object-cover">
                 </div>
             `).join('');
+
+            initSwiper(videos);
         }
 
-        function closeOverlay(id) { document.getElementById(id + '-overlay').classList.remove('active'); }
-
-        function navTo(page) {
-            document.querySelectorAll('.page-overlay').forEach(o => o.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            if(page !== 'home') {
-                document.getElementById(page + '-overlay').classList.add('active');
-                document.getElementById('n-' + page).classList.add('active');
-                if(page === 'profile') switchMyTab('vids');
-            } else {
-                document.getElementById('n-home').classList.add('active');
-            }
-        }
-
-        async function switchMyTab(t) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-'+t).classList.add('active');
-            const cont = document.getElementById('my-tab-content');
-            cont.innerHTML = "<p class='text-center opacity-20 py-10'>جاري التحميل...</p>";
-
-            if(t === 'vids') {
-                const snap = await db.collection("shared_videos").where("ownerId", "==", uID).get();
-                cont.innerHTML = snap.docs.map(d => `
-                    <div class="bg-[#1a1a1a] p-4 rounded-xl flex justify-between items-center">
-                        <span class="text-xs font-mono">ID: ${d.data().videoId}</span>
-                        <button onclick="deleteVid('${d.id}')" class="text-red-500 font-bold">حذف</button>
-                    </div>
-                `).join('') || "<p class='text-center opacity-30 py-10'>لا يوجد فيديوهات</p>";
-            } else if(t === 'following') {
-                cont.innerHTML = "";
-                for(let id of (userLocal.following || [])) {
-                    const u = await db.collection("users").doc(id).get();
-                    if(u.exists) cont.innerHTML += `<div class="bg-[#1a1a1a] p-4 rounded-xl flex justify-between"><span>${u.data().name}</span><button onclick="follow('${id}'); switchMyTab('following')" class="text-red-500 text-xs">إلغاء</button></div>`;
+        function initSwiper(vids) {
+            swiper = new Swiper(".mySwiper", {
+                direction: "vertical",
+                on: {
+                    slideChange: () => {
+                        Object.values(players).forEach(p => p.pauseVideo?.());
+                        players[swiper.activeIndex]?.playVideo();
+                    }
                 }
+            });
+
+            vids.forEach((v, i) => {
+                players[i] = new YT.Player(`player-${i}`, {
+                    videoId: v.videoId,
+                    playerVars: { autoplay: 0, controls: 0, modestbranding: 1, playsinline: 1 },
+                    events: { 'onStateChange': (e) => handleEarn(e) }
+                });
+            });
+            setTimeout(() => players[0]?.playVideo(), 1500);
+        }
+
+        let earnInterval = null;
+        function handleEarn(e) {
+            if (e.data === YT.PlayerState.PLAYING) {
+                earnInterval = setInterval(() => {
+                    const userPath = `/artifacts/${appId}/users/${currentUser.uid}/profile/main`;
+                    db.doc(userPath).update({ balance: firebase.firestore.FieldValue.increment(0.0001) });
+                }, 5000);
             } else {
-                cont.innerHTML = `<p class='text-center opacity-30 py-10'>عدد المتابعين: ${userLocal.followersCount || 0}</p>`;
+                clearInterval(earnInterval);
             }
         }
 
-        async function handlePublish() {
-            const url = document.getElementById('yt-url').value;
-            const vId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1];
-            if(!vId) return notify("الرابط غير صالح!");
-            
-            await db.collection("shared_videos").add({
-                videoId: vId,
-                ownerId: uID,
-                ownerName: uName,
-                createdAt: new Date()
+        async function publishVideo() {
+            const url = document.getElementById('video-url').value;
+            const vidId = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if (!vidId) return alert("الرابط خطأ");
+
+            document.getElementById('pub-btn').innerText = "جاري النشر...";
+            const publicPath = `/artifacts/${appId}/public/data/videos`;
+            await db.collection(publicPath).add({
+                videoId: vidId,
+                author: tg.initDataUnsafe?.user?.first_name || "مستخدم",
+                likes: 0,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            notify("تم النشر! سيظهر في الرئيسية");
             location.reload();
         }
 
-        async function deleteVid(id) {
-            if(!confirm("هل تريد حذف الفيديو؟")) return;
-            await db.collection("shared_videos").doc(id).delete();
-            switchMyTab('vids');
+        function likeVideo(id) {
+            const publicPath = `/artifacts/${appId}/public/data/videos/${id}`;
+            db.doc(publicPath).update({ likes: firebase.firestore.FieldValue.increment(1) });
+            tg.HapticFeedback.impactOccurred('light');
         }
 
-        function copyRef() {
-            const link = document.getElementById('ref-link').innerText;
-            const el = document.createElement('textarea'); el.value = link;
-            document.body.appendChild(el); el.select(); document.execCommand('copy');
-            document.body.removeChild(el);
-            notify("تم النسخ بنجاح! 📋");
+        function showPage(p) {
+            Object.values(players).forEach(pl => pl.pauseVideo?.());
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            if (p !== 'home') document.getElementById(`page-${p}`).classList.add('active');
         }
 
-        window.onload = init;
+        function closePages() {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            players[swiper.activeIndex]?.playVideo();
+        }
+
+        window.onload = startApp;
     </script>
-
 </body>
 </html>
