@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fogrener - Instant Access</title>
+    <title>Fogrener - Official App</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     
+    <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -17,161 +18,195 @@
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         body { background: #000; color: white; font-family: 'Cairo', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 70px; background: #050505; border-top: 1px solid #111; display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
-        .nav-item { color: #555; font-size: 11px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-        .nav-item.active { color: #fff; }
+        .loading-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .tiktok-loader { width: 50px; height: 50px; border: 3px solid #111; border-top: 3px solid #fe2c55; border-left: 3px solid #25f4ee; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .sub-page { position: fixed; inset: 0; background: #000; z-index: 2000; display: none; padding: 20px; overflow-y: auto; }
-        .sub-page.active { display: flex; flex-direction: column; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 70px; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); border-top: 1px solid #1a1a1a; display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
+        .nav-item { color: #666; font-size: 10px; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
+        .nav-item.active { color: #fff; transform: scale(1.1); }
 
-        /* Console Style */
-        #debug-box { position: fixed; top: 0; left: 0; right: 0; height: 40%; background: rgba(0,0,0,0.9); z-index: 9999; display: none; padding: 15px; font-family: monospace; font-size: 10px; color: #0f0; overflow-y: auto; border-bottom: 1px solid #333; }
-        
-        .loading-ring { width: 50px; height: 50px; border: 3px solid #333; border-top-color: #fe2c55; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(3600deg); } }
+        .video-player-container { width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; }
+        iframe { width: 100vw; height: 56.25vw; min-height: 100vh; min-width: 177.77vh; position: absolute; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <!-- Debug Log -->
-    <div id="debug-box">
-        <div class="flex justify-between mb-2"><b>DEBUG LOG</b> <button onclick="toggleDebug()">[CLOSE]</button></div>
-        <div id="logs"></div>
+    <!-- شاشة التحميل -->
+    <div id="loader" class="loading-screen">
+        <div class="tiktok-loader mb-6"></div>
+        <h1 class="text-2xl font-black tracking-tighter italic text-white">FOGRENER</h1>
+        <p id="loader-msg" class="text-zinc-600 text-[10px] mt-4 uppercase tracking-[4px]">Connecting to server...</p>
     </div>
 
-    <!-- UI Overlay -->
-    <div id="main-content" class="h-screen w-screen relative">
-        <!-- Top Stats -->
-        <div class="fixed top-10 left-5 right-5 flex justify-between items-center z-[100]">
-            <div class="p-2 bg-zinc-900/80 rounded-full" onclick="toggleDebug()">⚙️</div>
-            <div id="balance-pill" class="px-4 py-2 bg-zinc-900/80 rounded-full text-green-400 font-black border border-white/5">0.0000 💰</div>
+    <!-- التطبيق -->
+    <div id="app" class="h-screen w-screen opacity-0 transition-opacity duration-1000 relative">
+        
+        <!-- Header Stats -->
+        <div class="fixed top-12 left-0 right-0 px-6 flex justify-between items-center z-[500]">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-zinc-900/60 backdrop-blur rounded-lg flex items-center justify-center border border-white/5" onclick="location.reload()">
+                    <span class="text-xs">🔄</span>
+                </div>
+            </div>
+            <div class="bg-zinc-900/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                <span class="text-green-400 font-black text-sm" id="bal-text">0.0000</span>
+                <span class="text-xs opacity-50">💰</span>
+            </div>
         </div>
 
-        <!-- Video Feed Container -->
-        <div id="video-placeholder" class="h-full w-full flex flex-col items-center justify-center text-zinc-700 bg-zinc-950">
-            <div class="loading-ring mb-4"></div>
-            <p id="status-text">جاري الاتصال بالسيرفر...</p>
-        </div>
-        
-        <div class="swiper mySwiper h-full w-full hidden" id="swiper-container">
+        <!-- Feed Area -->
+        <div class="swiper mySwiper h-full w-full">
             <div class="swiper-wrapper" id="feed-wrapper"></div>
         </div>
 
-        <!-- Navbar -->
+        <!-- Bottom Navigation -->
         <div class="nav-bar">
-            <div class="nav-item active" onclick="showPage('home')"><span>🏠</span><span>الرئيسية</span></div>
-            <div class="nav-item" onclick="showPage('wallet')"><span>💰</span><span>الأرباح</span></div>
-            <div class="nav-item" onclick="showPage('profile')"><span>👤</span><span>الملف</span></div>
-        </div>
-    </div>
-
-    <!-- Sub Pages -->
-    <div id="page-wallet" class="sub-page">
-        <div class="flex justify-between items-center mb-10"><h2 class="text-3xl font-black">المحفظة</h2><span class="text-2xl" onclick="showPage('home')">✕</span></div>
-        <div class="bg-zinc-900 p-8 rounded-3xl text-center border border-white/5">
-            <p class="text-zinc-500 mb-2">الرصيد الكلي</p>
-            <h1 class="text-5xl font-black text-green-400" id="wallet-bal">$0.0000</h1>
-        </div>
-    </div>
-
-    <div id="page-profile" class="sub-page">
-        <div class="flex justify-between items-center mb-10"><h2 class="text-3xl font-black">حسابي</h2><span class="text-2xl" onclick="showPage('home')">✕</span></div>
-        <div class="flex items-center gap-4 mb-8">
-            <div id="user-img" class="w-16 h-16 rounded-full bg-zinc-800 overflow-hidden"></div>
-            <div>
-                <h3 id="user-name" class="font-bold text-xl">...</h3>
-                <p id="user-id" class="text-[10px] text-zinc-600 font-mono"></p>
+            <div class="nav-item active">
+                <span class="text-xl">🏠</span>
+                <span class="mt-1">الرئيسية</span>
+            </div>
+            <div class="nav-item" onclick="alert('المهام قادمة قريباً!')">
+                <span class="text-xl">⚡</span>
+                <span class="mt-1">المهمات</span>
+            </div>
+            <div class="nav-item">
+                <div class="w-11 h-8 bg-white rounded-lg flex items-center justify-center text-black text-xl font-bold">+</div>
+            </div>
+            <div class="nav-item" onclick="alert('المحفظة قريباً')">
+                <span class="text-xl">💰</span>
+                <span class="mt-1">الأرباح</span>
+            </div>
+            <div class="nav-item" onclick="alert('الملف الشخصي قريباً')">
+                <span class="text-xl">👤</span>
+                <span class="mt-1">الملف</span>
             </div>
         </div>
     </div>
 
-    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        function log(m, success = true) {
-            const logs = document.getElementById('logs');
-            logs.innerHTML = `<div><span style="color:${success?'#0f0':'#f00'}">${new Date().toLocaleTimeString()}</span>: ${m}</div>` + logs.innerHTML;
-        }
-
-        function toggleDebug() {
-            const b = document.getElementById('debug-box');
-            b.style.display = b.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // 1. Initial Setup
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        
-        const tgUser = tg.initDataUnsafe?.user;
-        document.getElementById('user-name').innerText = tgUser?.first_name || "Guest";
-        document.getElementById('user-img').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser?.id || '1'}" class="w-full h-full">`;
-
-        // 2. Firebase Async Start
-        const config = JSON.parse(__firebase_config);
-        firebase.initializeApp(config);
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
 
-        async function initAuth() {
-            log("بدء محاولة الدخول...");
+        async function initApp() {
             try {
-                // محاولة الدخول في الخلفية دون تعطيل الواجهة
-                const authTask = (__initial_auth_token) ? 
-                    auth.signInWithCustomToken(__initial_auth_token) : 
-                    auth.signInAnonymously();
+                // Telegram expand
+                if(window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.expand();
+                }
 
-                authTask.then(u => {
-                    log("تم الدخول بنجاح: " + u.user.uid);
-                    document.getElementById('user-id').innerText = u.user.uid;
-                    loadData(u.user.uid);
-                }).catch(e => {
-                    log("فشل الدخول، المحاولة كضيف: " + e.message, false);
-                    auth.signInAnonymously();
+                // Auth
+                await firebase.auth().signInAnonymously();
+
+                // Get Videos - نستخدم المسار التلقائي shared_videos
+                db.collection("shared_videos").get().then(snap => {
+                    if (snap.empty) {
+                        document.getElementById('loader-msg').innerText = "EMPTY FEED - ADD VIDEOS IN FIREBASE";
+                        // إظهار واجهة فارغة بدل البقاء في اللودر
+                        render([]);
+                    } else {
+                        render(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    }
+                }).catch(err => {
+                    document.getElementById('loader-msg').innerText = "DB ERROR: " + err.message;
                 });
 
-            } catch (err) {
-                log("خطأ غير متوقع: " + err.message, false);
+            } catch (e) {
+                document.getElementById('loader-msg').innerText = "SYSTEM ERROR";
             }
         }
 
-        function loadData(uid) {
-            log("جاري جلب الفيديوهات من Firestore...");
-            db.collection(`/artifacts/${__app_id}/public/data/vULTRAs_Vids`).get().then(snap => {
-                log("عدد الفيديوهات: " + snap.size);
-                if(snap.size > 0) {
-                    renderFeed(snap.docs.map(d => d.data()));
-                } else {
-                    document.getElementById('status-text').innerText = "لا توجد فيديوهات حالياً.";
-                }
-            }).catch(e => {
-                log("خطأ في جلب البيانات: " + e.message, false);
-                document.getElementById('status-text').innerText = "فشل الاتصال بالقاعدة.";
+        function render(vids) {
+            const wrapper = document.getElementById('feed-wrapper');
+            
+            if(vids.length === 0) {
+                wrapper.innerHTML = `
+                    <div class="swiper-slide bg-black flex items-center justify-center text-zinc-700 text-center p-10">
+                        <div>
+                            <div class="text-6xl mb-4 text-zinc-800">📭</div>
+                            <h2 class="text-lg font-bold">لا توجد فيديوهات حالياً</h2>
+                            <p class="text-xs">تأكد من إضافة فيديوهات في مجموعة shared_videos</p>
+                        </div>
+                    </div>`;
+            } else {
+                wrapper.innerHTML = vids.map((v, i) => `
+                    <div class="swiper-slide bg-black overflow-hidden">
+                        <div class="video-player-container">
+                            <div id="player-${i}"></div>
+                            <div class="absolute inset-0 z-10" onclick="handleTap(${i})"></div>
+                            
+                            <!-- Sidebar Actions -->
+                            <div class="absolute bottom-32 right-4 z-20 flex flex-col gap-6 items-center">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 bg-zinc-900/60 backdrop-blur-md rounded-full flex items-center justify-center text-xl shadow-lg">❤️</div>
+                                    <span class="text-[10px] mt-1 font-bold">${v.likes || '2.4K'}</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 bg-zinc-900/60 backdrop-blur-md rounded-full flex items-center justify-center text-xl shadow-lg">💬</div>
+                                    <span class="text-[10px] mt-1 font-bold">120</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 bg-zinc-900/60 backdrop-blur-md rounded-full flex items-center justify-center text-xl shadow-lg">🔗</div>
+                                    <span class="text-[10px] mt-1 font-bold">مشاركة</span>
+                                </div>
+                            </div>
+
+                            <!-- Info -->
+                            <div class="absolute bottom-28 left-5 z-20 max-w-[75%]">
+                                <h3 class="font-bold text-lg mb-1 drop-shadow-md">@${v.owner || 'fogrener_user'}</h3>
+                                <p class="text-sm text-zinc-200 line-clamp-2 leading-relaxed drop-shadow-sm">${v.title || 'استمتع بأفضل المقاطع على منصة فقرينر الأولى في ليبيا 🇱🇾'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('app').style.opacity = '1';
+
+            if(vids.length > 0) {
+                initSwiper();
+                initPlayers(vids);
+            }
+        }
+
+        let players = [];
+        function initPlayers(vids) {
+            vids.forEach((v, i) => {
+                players[i] = new YT.Player(`player-${i}`, {
+                    videoId: v.youtubeId || v.id,
+                    playerVars: { 'autoplay': 0, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'playsinline': 1, 'iv_load_policy': 3 },
+                    events: {
+                        'onReady': (e) => { if(i === 0) e.target.playVideo(); }
+                    }
+                });
             });
         }
 
-        function renderFeed(vids) {
-            const wrapper = document.getElementById('feed-wrapper');
-            wrapper.innerHTML = vids.map((v, i) => `
-                <div class="swiper-slide bg-black flex items-center justify-center">
-                    <div id="player-${i}" class="w-full h-full pointer-events-none"></div>
-                    <div class="absolute inset-0 z-10" onclick="togglePlay(${i})"></div>
-                </div>
-            `).join('');
-            
-            document.getElementById('video-placeholder').style.display = 'none';
-            document.getElementById('swiper-container').classList.remove('hidden');
-            
-            new Swiper(".mySwiper", { direction: "vertical" });
-            log("تم تشغيل واجهة الفيديوهات.");
+        function initSwiper() {
+            new Swiper(".mySwiper", {
+                direction: "vertical",
+                resistanceRatio: 0,
+                on: {
+                    slideChange: function () {
+                        players.forEach(p => p?.pauseVideo());
+                        players[this.activeIndex]?.playVideo();
+                    }
+                }
+            });
         }
 
-        function showPage(id) {
-            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
-            if(id !== 'home') document.getElementById(`page-${id}`).classList.add('active');
+        function handleTap(i) {
+            const state = players[i]?.getPlayerState();
+            if(state === 1) players[i].pauseVideo();
+            else players[i].playVideo();
         }
 
-        window.onload = initAuth;
+        window.onload = initApp;
     </script>
 </body>
 </html>
