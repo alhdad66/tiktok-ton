@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منصة العرض - عبود برو</title>
+    <title>منصة العرض - عبود برو V5.2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -27,6 +27,7 @@
         @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; transform: translate(-50%, -20px); } 100% { opacity:0; transform: translate(-50%, -120px); } }
         .yt-frame-container { position: relative; width: 100%; height: 100%; pointer-events: none; }
         iframe { width: 100%; height: 100%; pointer-events: none; }
+        .admin-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
@@ -37,13 +38,16 @@
             <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
             <div class="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_#dc2626]"></div>
         </div>
-        <div onclick="switchTab('notifs')" class="bg-zinc-900/95 p-3 rounded-full border border-white/5 pointer-events-auto cursor-pointer relative">
-            <span class="text-xl">🔔</span>
-            <div id="notifBadge" class="notif-badge hidden">0</div>
+        <div class="flex gap-2">
+            <div id="adminIcon" onclick="switchTab('admin')" class="hidden bg-red-600 p-3 rounded-full pointer-events-auto cursor-pointer shadow-lg shadow-red-600/20 text-xl">👑</div>
+            <div onclick="switchTab('notifs')" class="bg-zinc-900/95 p-3 rounded-full border border-white/5 pointer-events-auto cursor-pointer relative">
+                <span class="text-xl">🔔</span>
+                <div id="notifBadge" class="notif-badge hidden">0</div>
+            </div>
         </div>
     </div>
 
-    <!-- Home / Feed -->
+    <!-- Home Page -->
     <div id="homePage" class="page active-page !p-0">
         <div id="videoTimer" class="timer-badge hidden">
             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -52,52 +56,46 @@
         <div class="swiper mySwiper"><div class="swiper-wrapper" id="videoWrapper"></div></div>
     </div>
 
-    <!-- Stats / Publish -->
+    <!-- Stats Page -->
     <div id="statsPage" class="page p-6 pt-24">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-2xl">📊</div>
-            <div>
-                <h2 class="text-2xl font-black italic">الإحصائيات</h2>
-                <p class="text-zinc-500 text-[10px] font-bold">تتبع أداء فيديوهاتك</p>
-            </div>
+            <div><h2 class="text-2xl font-black italic">الإحصائيات</h2><p class="text-zinc-500 text-[10px] font-bold">تتبع أداء فيديوهاتك</p></div>
         </div>
-        <div class="bg-zinc-900/40 p-5 rounded-[2.5rem] border border-white/5 mb-6">
-            <canvas id="tradingChart" style="max-height: 180px;"></canvas>
-        </div>
+        <div class="bg-zinc-900/40 p-5 rounded-[2.5rem] border border-white/5 mb-6"><canvas id="tradingChart" style="max-height: 180px;"></canvas></div>
         <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center">
-                <p class="text-[9px] text-zinc-500 font-black uppercase">المشاهدات</p>
-                <h4 id="totalViews" class="text-2xl font-black text-red-500">0</h4>
-            </div>
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center">
-                <p class="text-[9px] text-zinc-500 font-black uppercase">التفاعل</p>
-                <h4 id="totalLikes" class="text-2xl font-black text-red-500">0</h4>
-            </div>
+            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center"><p class="text-[9px] text-zinc-500 font-black uppercase">المشاهدات</p><h4 id="totalViews" class="text-2xl font-black text-red-500">0</h4></div>
+            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center"><p class="text-[9px] text-zinc-500 font-black uppercase">التفاعل</p><h4 id="totalLikes" class="text-2xl font-black text-red-500">0</h4></div>
         </div>
         <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-20">
             <p class="text-xs font-black text-red-500 mb-4">انشر فيديو جديد</p>
             <div class="flex gap-2">
-                <input id="ytInput" type="text" placeholder="رابط فيديو يوتيوب..." class="flex-1 bg-black/50 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-red-600">
+                <input id="ytInput" type="text" placeholder="رابط فيديو يوتيوب..." class="flex-1 bg-black/50 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-red-600 text-white">
                 <button onclick="handlePublish()" class="bg-red-600 px-6 rounded-2xl font-black text-sm">نشر</button>
             </div>
         </div>
         <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
-    <!-- Profile -->
+    <!-- Profile Page -->
     <div id="profilePage" class="page !p-0">
         <div class="pt-24 pb-10 text-center bg-gradient-to-b from-red-900/20 to-black">
-            <div class="w-24 h-24 mx-auto mb-4 p-1 border-2 border-red-600 rounded-full">
+            <div class="w-24 h-24 mx-auto mb-4 p-1 border-2 border-red-600 rounded-full shadow-lg">
                 <img id="uProfImg" src="" class="w-full h-full rounded-full object-cover">
             </div>
             <h2 id="uProfName" class="text-2xl font-black italic">...</h2>
+            
+            <div id="profileActions" class="flex flex-col gap-3 px-10 mt-6">
+                <div class="flex gap-2">
+                    <button id="followBtn" onclick="toggleFollow()" class="flex-1 bg-red-600 py-3 rounded-2xl font-black text-xs active:scale-95">متابعة</button>
+                    <button id="withdrawBtn" onclick="requestWithdraw()" class="hidden flex-1 bg-white text-black py-3 rounded-2xl font-black text-xs active:scale-95 italic">سحب الأرباح 💸</button>
+                </div>
+                <button onclick="switchTab('home')" class="w-full bg-white/5 border border-white/10 py-2 rounded-xl text-[10px] font-bold">رجوع للرئيسية</button>
+            </div>
+
             <div class="flex justify-center gap-10 my-6">
                 <div class="text-center"><p id="uVidsCount" class="text-xl font-black">0</p><p class="text-[9px] text-zinc-500 uppercase">بث</p></div>
                 <div class="text-center"><p id="uFollsCount" class="text-xl font-black">0</p><p class="text-[9px] text-zinc-500 uppercase">متابع</p></div>
-            </div>
-            <div class="flex justify-center px-10 gap-2 mb-8">
-                <button id="followBtn" onclick="toggleFollow()" class="flex-1 bg-red-600 py-3 rounded-2xl font-black text-xs active:scale-95">متابعة</button>
-                <button onclick="switchTab('home')" class="w-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center">✕</button>
             </div>
         </div>
         <div class="flex border-b border-white/5">
@@ -107,13 +105,27 @@
         <div class="grid grid-cols-3 gap-0.5 mt-0.5" id="profileGrid"></div>
     </div>
 
-    <!-- Notifications -->
+    <!-- Admin Page -->
+    <div id="adminPage" class="page p-6 pt-24">
+        <div class="flex justify-between items-end mb-8">
+            <div>
+                <h2 class="text-3xl font-black italic text-red-600 leading-none">لوحة الإدارة</h2>
+                <p class="text-zinc-500 text-[10px] font-bold mt-2 uppercase tracking-widest">Withdrawal Management</p>
+            </div>
+            <div class="bg-zinc-900 p-2 rounded-xl border border-white/5 text-[10px] font-black text-zinc-400">ADMIN MODE</div>
+        </div>
+        <div id="withdrawRequestsList" class="space-y-4 pb-20">
+            <!-- Requests show here -->
+        </div>
+    </div>
+
+    <!-- Notifications Page -->
     <div id="notifsPage" class="page p-6 pt-24">
         <h2 class="text-2xl font-black mb-8">التنبيهات 🔔</h2>
         <div id="notifList" class="space-y-3"></div>
     </div>
 
-    <!-- Navigation -->
+    <!-- Navigation Bar -->
     <div class="nav-bar">
         <div onclick="switchTab('home')" class="text-2xl opacity-40 hover:opacity-100 p-2 transition-all">🏠</div>
         <div onclick="switchTab('stats')" class="bg-red-600 w-16 h-10 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg active:scale-90">+</div>
@@ -130,7 +142,8 @@
 
         const tg = window.Telegram.WebApp;
         const tgUser = tg.initDataUnsafe?.user || {};
-        const uID = String(tgUser.id || "88583019");
+        const uID = String(tgUser.id || "88583019"); 
+        const adminID = "7416599626"; // أيدي الإدمن الجديد
         const userName = tgUser.first_name || "مستخدم مجهول";
         const userImg = tgUser.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png";
 
@@ -140,12 +153,14 @@
         async function init() {
             const userRef = db.collection("users").doc(uID);
             const userDoc = await userRef.get();
-            
-            if(!userDoc.exists) { 
-                await userRef.set({ name: userName, img: userImg, balance: 0, likedVids: [], watchedVids: [], following: [], followersCount: 0 }); 
+            if(!userDoc.exists) { await userRef.set({ name: userName, img: userImg, balance: 0, likedVids: [], watchedVids: [], following: [], followersCount: 0 }); }
+
+            // إظهار لوحة التحكم للإدمن فقط
+            if(uID === adminID) { 
+                document.getElementById('adminIcon').classList.remove('hidden'); 
+                loadWithdrawRequests(); 
             }
 
-            // Listen to User Data
             userRef.onSnapshot(d => {
                 if(d.exists) {
                     const data = d.data();
@@ -157,14 +172,12 @@
                 }
             });
 
-            // Notifications Count
             db.collection("users").doc(uID).collection("notifs").where("seen", "==", false).onSnapshot(snap => {
                 const badge = document.getElementById('notifBadge');
                 if(snap.size > 0) { badge.innerText = snap.size; badge.classList.remove('hidden'); }
                 else { badge.classList.add('hidden'); }
             });
 
-            // Load Videos
             db.collection("shared_videos").orderBy("createdAt", "desc").onSnapshot(snap => {
                 allVideos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
                 renderHome();
@@ -175,64 +188,158 @@
             loadNotifs();
         }
 
+        // --- نظام السحب المحدث ---
+        async function requestWithdraw() {
+            if(balance <= 0) {
+                alert("عذراً، رصيدك صفر حالياً ولا يمكن السحب.");
+                return;
+            }
+
+            const method = prompt("أدخل وسيلة السحب (رقم محفظة TON أو USDT):");
+            if(!method || method.trim() === "") return;
+
+            const amountToWithdraw = balance;
+
+            // تصفير الرصيد فوراً لمنع التكرار
+            await db.collection("users").doc(uID).update({ balance: 0 });
+
+            await db.collection("withdraws").add({
+                userId: uID,
+                userName: userName,
+                amount: amountToWithdraw,
+                method: method,
+                status: "pending",
+                createdAt: new Date()
+            });
+
+            alert("تم إرسال الطلب بنجاح! سيتم مراجعته من قبل الإدارة.");
+        }
+
+        // --- لوحة الإدارة ---
+        function loadWithdrawRequests() {
+            db.collection("withdraws").where("status", "==", "pending").orderBy("createdAt", "desc").onSnapshot(snap => {
+                const list = document.getElementById('withdrawRequestsList');
+                list.innerHTML = '';
+                if(snap.empty) {
+                    list.innerHTML = '<div class="text-center py-20 opacity-20 italic">لا توجد طلبات سحب حالياً</div>';
+                    return;
+                }
+                snap.forEach(doc => {
+                    const req = doc.data();
+                    list.innerHTML += `
+                        <div class="admin-card p-5 rounded-3xl shadow-2xl">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-red-600/20 text-red-500 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Withdraw Request</span>
+                                <span class="text-[10px] text-zinc-600 font-bold">${new Date(req.createdAt.seconds*1000).toLocaleDateString()}</span>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-zinc-500 text-[9px] uppercase font-black">المستخدم</p>
+                                <h4 class="text-lg font-black text-white italic">@${req.userName}</h4>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-5">
+                                <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
+                                    <p class="text-[8px] text-zinc-500 uppercase font-black mb-1">المبلغ المطلوب</p>
+                                    <p class="text-xl font-black text-green-500">$${req.amount.toFixed(4)}</p>
+                                </div>
+                                <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
+                                    <p class="text-[8px] text-zinc-500 uppercase font-black mb-1">الوسيلة</p>
+                                    <p class="text-[10px] font-bold text-zinc-300 break-all">${req.method}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="handleAdminAction('${doc.id}', '${req.userId}', 'approved')" class="flex-1 bg-green-600 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-green-900/20">قبول ✅</button>
+                                <button onclick="handleAdminAction('${doc.id}', '${req.userId}', 'rejected', ${req.amount})" class="flex-1 bg-red-600 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-red-900/20">رفض ❌</button>
+                            </div>
+                        </div>`;
+                });
+            });
+        }
+
+        async function handleAdminAction(reqId, userId, action, refundAmount = 0) {
+            const statusMsg = action === 'approved' ? "✅ مبروك! تمت الموافقة على طلب سحب أرباحك وإرسال المبلغ." : "❌ نأسف، تم رفض طلب السحب الخاص بك وإرجاع الرصيد لحسابك.";
+            
+            await db.collection("withdraws").doc(reqId).update({ status: action });
+            
+            await db.collection("users").doc(userId).collection("notifs").add({
+                message: statusMsg,
+                seen: false,
+                createdAt: new Date()
+            });
+
+            if(action === 'rejected' && refundAmount > 0) {
+                await db.collection("users").doc(userId).update({
+                    balance: firebase.firestore.FieldValue.increment(refundAmount)
+                });
+            }
+            alert(`الإجراء مكتمل: ${action}`);
+        }
+
+        // --- تحديث عرض الملف الشخصي ---
+        async function openProfile(id) {
+            activeProfileID = id;
+            const doc = await db.collection("users").doc(id).get();
+            const data = doc.exists ? doc.data() : { name: "مجهول", img: userImg, followersCount: 0 };
+            
+            document.getElementById('uProfName').innerText = data.name;
+            document.getElementById('uProfImg').src = data.img || userImg;
+            document.getElementById('uFollsCount').innerText = data.followersCount || 0;
+            
+            const followBtn = document.getElementById('followBtn');
+            const withdrawBtn = document.getElementById('withdrawBtn');
+            
+            // يظهر زر السحب للمستخدم في ملفه الشخصي فقط
+            if(id === uID) {
+                followBtn.classList.add('hidden');
+                withdrawBtn.classList.remove('hidden');
+            } else {
+                followBtn.classList.remove('hidden');
+                withdrawBtn.classList.add('hidden');
+                const isFollowing = myFollowing.includes(id);
+                followBtn.innerText = isFollowing ? "إلغاء المتابعة" : "متابعة";
+                followBtn.className = isFollowing ? "flex-1 bg-zinc-800 py-3 rounded-2xl font-black text-xs" : "flex-1 bg-red-600 py-3 rounded-2xl font-black text-xs";
+            }
+            
+            setProfileTab('my');
+            switchTab('profile');
+        }
+
+        // وظائف المحرك الأساسية (دون تغيير)
+        function switchTab(t) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            if(t === 'profile_self') { openProfile(uID); return; }
+            document.getElementById(t + 'Page').classList.add('active-page');
+            stopVideos();
+            if(t === 'home' && swiper) startTimerProcess(swiper.activeIndex);
+        }
+
         function renderHome() {
             const wrap = document.getElementById('videoWrapper');
             const currentIdx = swiper ? swiper.activeIndex : 0;
             wrap.innerHTML = '';
-            
             allVideos.forEach((v, i) => {
                 const isLiked = myLikes.includes(v.id);
-                wrap.innerHTML += `
-                    <div class="swiper-slide relative bg-black">
-                        <div class="yt-frame-container"><div id="player-${i}"></div></div>
-                        <div class="interaction-layer">
-                            <div class="absolute right-5 bottom-36 flex flex-col items-center gap-7">
-                                <img src="${v.ownerImg || userImg}" class="interactive-element w-14 h-14 rounded-full border-2 border-red-600 object-cover shadow-xl" onclick="openProfile('${v.ownerId}')">
-                                <div onclick="handleLike('${v.id}', '${v.ownerId}', this)" class="interactive-element text-center cursor-pointer transition-transform active:scale-125">
-                                    <span class="text-3xl transition-all" style="filter: ${isLiked ? 'grayscale(0) drop-shadow(0 0 10px #dc2626)' : 'grayscale(1)'}">❤️</span>
-                                    <p class="text-xs font-black mt-1">${v.likes || 0}</p>
-                                </div>
-                                <div class="interactive-element text-center opacity-70"><span class="text-3xl">✈️</span></div>
-                            </div>
-                            <div class="absolute bottom-28 right-8 text-right pointer-events-none">
-                                <h3 class="text-xl font-black drop-shadow-lg">@${v.ownerName}</h3>
-                                <p class="text-[10px] text-zinc-400 font-bold mt-1">بث مباشر يوتيوب 🎬</p>
-                            </div>
-                        </div>
-                    </div>`;
+                wrap.innerHTML += `<div class="swiper-slide relative bg-black"><div class="yt-frame-container"><div id="player-${i}"></div></div><div class="interaction-layer"><div class="absolute right-5 bottom-36 flex flex-col items-center gap-7"><img src="${v.ownerImg || userImg}" class="interactive-element w-14 h-14 rounded-full border-2 border-red-600 object-cover shadow-xl" onclick="openProfile('${v.ownerId}')"><div onclick="handleLike('${v.id}', '${v.ownerId}', this)" class="interactive-element text-center cursor-pointer transition-transform active:scale-125"><span class="text-3xl transition-all" style="filter: ${isLiked ? 'grayscale(0) drop-shadow(0 0 10px #dc2626)' : 'grayscale(1)'}">❤️</span><p class="text-xs font-black mt-1">${v.likes || 0}</p></div><div class="interactive-element text-center opacity-70"><span class="text-3xl">✈️</span></div></div><div class="absolute bottom-28 right-8 text-right pointer-events-none"><h3 class="text-xl font-black drop-shadow-lg">@${v.ownerName}</h3><p class="text-[10px] text-zinc-400 font-bold mt-1">بث مباشر يوتيوب 🎬</p></div></div></div>`;
             });
-
             if(swiper) swiper.destroy();
-            swiper = new Swiper(".mySwiper", { 
-                direction: "vertical", 
-                initialSlide: currentIdx, 
-                on: { slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } } 
-            });
+            swiper = new Swiper(".mySwiper", { direction: "vertical", initialSlide: currentIdx, on: { slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } } });
             setTimeout(initPlayers, 500);
-            startTimerProcess(currentIdx);
+            if(allVideos.length > 0) startTimerProcess(currentIdx);
         }
 
         function initPlayers() {
             allVideos.forEach((v, i) => {
-                players[i] = new YT.Player(`player-${i}`, {
-                    videoId: v.videoId,
-                    playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1, rel: 0 },
+                players[i] = new YT.Player(`player-${i}`, { videoId: v.videoId, playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1, rel: 0 },
                     events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startActualCountdown(i); } }
                 });
             });
         }
 
-        function startTimerProcess(idx) {
-            if(players[idx]?.playVideo) players[idx].playVideo();
-            // العداد لا يبدأ هنا، يبدأ في startActualCountdown عند اشتغال الفيديو فعلياً
-        }
-
+        function startTimerProcess(idx) { if(players[idx]?.playVideo) players[idx].playVideo(); }
         function startActualCountdown(idx) {
             clearInterval(currentTimer);
             const v = allVideos[idx];
             const badge = document.getElementById('videoTimer');
             if(!v || v.ownerId === uID || watchedVids.includes(v.id)) { badge.classList.add('hidden'); return; }
-            
             badge.classList.remove('hidden');
             let sec = 10;
             document.getElementById('timerText').innerText = sec + "s";
@@ -243,10 +350,7 @@
                     clearInterval(currentTimer);
                     badge.classList.add('hidden');
                     showRewardPopup();
-                    await db.collection("users").doc(uID).update({ 
-                        balance: firebase.firestore.FieldValue.increment(0.0005),
-                        watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id)
-                    });
+                    await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(0.0005), watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id) });
                     await db.collection("shared_videos").doc(v.id).update({ views: firebase.firestore.FieldValue.increment(1) });
                 }
             }, 1000);
@@ -256,64 +360,27 @@
             const isLiked = myLikes.includes(vidId);
             const p = el.querySelector('p');
             const icon = el.querySelector('span');
-
-            // Instant UI
             icon.style.filter = isLiked ? "grayscale(1)" : "grayscale(0) drop-shadow(0 0 10px #dc2626)";
             p.innerText = isLiked ? Math.max(0, parseInt(p.innerText)-1) : parseInt(p.innerText)+1;
-
             if(isLiked) {
                 await db.collection("shared_videos").doc(vidId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
                 await db.collection("users").doc(uID).update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
             } else {
                 await db.collection("shared_videos").doc(vidId).update({ likes: firebase.firestore.FieldValue.increment(1) });
                 await db.collection("users").doc(uID).update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidId) });
-                if(ownerId !== uID) {
-                    db.collection("users").doc(ownerId).collection("notifs").add({
-                        message: `🔥 أعجب @${userName} بفيديوهك!`,
-                        seen: false, createdAt: new Date()
-                    });
-                }
+                if(ownerId !== uID) { db.collection("users").doc(ownerId).collection("notifs").add({ message: `🔥 أعجب @${userName} بفيديوهك!`, seen: false, createdAt: new Date() }); }
             }
         }
 
         function updateStats() {
             const mine = allVideos.filter(v => v.ownerId === uID);
-            let views = 0, likes = 0;
-            mine.forEach(v => { views += (v.views || 0); likes += (v.likes || 0); });
-            document.getElementById('totalViews').innerText = views;
-            document.getElementById('totalLikes').innerText = likes;
-
-            const list = document.getElementById('myVideosList');
-            list.innerHTML = '';
-            mine.forEach(vid => {
-                list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-3xl border border-white/5 flex items-center justify-between">
-                    <img src="https://img.youtube.com/vi/${vid.videoId}/mqdefault.jpg" class="w-10 h-10 rounded-lg object-cover">
-                    <p class="text-[10px] font-black uppercase text-zinc-400">👁️ ${vid.views} | ❤️ ${vid.likes}</p>
-                    <button onclick="delVid('${vid.id}')" class="text-red-500 font-bold text-[9px] bg-red-500/10 px-3 py-1.5 rounded-lg">حذف</button>
-                </div>`;
-            });
+            let views = 0, likes = 0; mine.forEach(v => { views += (v.views || 0); likes += (v.likes || 0); });
+            document.getElementById('totalViews').innerText = views; document.getElementById('totalLikes').innerText = likes;
+            const list = document.getElementById('myVideosList'); list.innerHTML = '';
+            mine.forEach(vid => { list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-3xl border border-white/5 flex items-center justify-between"><img src="https://img.youtube.com/vi/${vid.videoId}/mqdefault.jpg" class="w-10 h-10 rounded-lg object-cover"><p class="text-[10px] font-black uppercase text-zinc-400">👁️ ${vid.views} | ❤️ ${vid.likes}</p><button onclick="delVid('${vid.id}')" class="text-red-500 font-bold text-[9px] bg-red-500/10 px-3 py-1.5 rounded-lg">حذف</button></div>`; });
         }
 
         async function delVid(id) { if(confirm("حذف الفيديو؟")) await db.collection("shared_videos").doc(id).delete(); }
-
-        async function openProfile(id) {
-            activeProfileID = id;
-            const doc = await db.collection("users").doc(id).get();
-            const data = doc.exists ? doc.data() : { name: "مجهول", img: userImg, followersCount: 0 };
-            
-            document.getElementById('uProfName').innerText = data.name;
-            document.getElementById('uProfImg').src = data.img || userImg;
-            document.getElementById('uFollsCount').innerText = data.followersCount || 0;
-            
-            const btn = document.getElementById('followBtn');
-            btn.style.display = (id === uID) ? 'none' : 'block';
-            const isFollowing = myFollowing.includes(id);
-            btn.innerText = isFollowing ? "إلغاء المتابعة" : "متابعة";
-            btn.className = isFollowing ? "flex-1 bg-zinc-800 py-3 rounded-2xl font-black text-xs" : "flex-1 bg-red-600 py-3 rounded-2xl font-black text-xs";
-            
-            setProfileTab('my');
-            switchTab('profile');
-        }
 
         function setProfileTab(m) {
             profileMode = m;
@@ -325,13 +392,7 @@
         function updateProfileGrid() {
             const grid = document.getElementById('profileGrid'); grid.innerHTML = '';
             const vids = (profileMode === 'my') ? allVideos.filter(v => v.ownerId === activeProfileID) : allVideos.filter(v => myLikes.includes(v.id));
-            
-            vids.forEach(v => {
-                const idx = allVideos.findIndex(vid => vid.id === v.id);
-                grid.innerHTML += `<div class="aspect-[9/16] bg-zinc-900 overflow-hidden" onclick="goToVideo(${idx})">
-                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover">
-                </div>`;
-            });
+            vids.forEach(v => { const idx = allVideos.findIndex(vid => vid.id === v.id); grid.innerHTML += `<div class="aspect-[9/16] bg-zinc-900 overflow-hidden" onclick="goToVideo(${idx})"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover"></div>`; });
             document.getElementById('uVidsCount').innerText = vids.length;
         }
 
@@ -341,71 +402,33 @@
             const isFollowing = myFollowing.includes(activeProfileID);
             const userRef = db.collection("users").doc(uID);
             const targetRef = db.collection("users").doc(activeProfileID);
-            
-            if(isFollowing) {
-                await userRef.update({ following: firebase.firestore.FieldValue.arrayRemove(activeProfileID) });
-                await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(-1) });
-            } else {
-                await userRef.update({ following: firebase.firestore.FieldValue.arrayUnion(activeProfileID) });
-                await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(1) });
-                db.collection("users").doc(activeProfileID).collection("notifs").add({
-                    message: `👤 بدأ @${userName} بمتابعتك!`,
-                    seen: false, createdAt: new Date()
-                });
-            }
+            if(isFollowing) { await userRef.update({ following: firebase.firestore.FieldValue.arrayRemove(activeProfileID) }); await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(-1) }); }
+            else { await userRef.update({ following: firebase.firestore.FieldValue.arrayUnion(activeProfileID) }); await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(1) }); db.collection("users").doc(activeProfileID).collection("notifs").add({ message: `👤 بدأ @${userName} بمتابعتك!`, seen: false, createdAt: new Date() }); }
             openProfile(activeProfileID);
         }
 
         async function handlePublish() {
-            const val = document.getElementById('ytInput').value;
-            const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if(vidId) {
-                await db.collection("shared_videos").add({
-                    videoId: vidId, ownerId: uID, ownerName: userName,
-                    ownerImg: userImg, views: 0, likes: 0, createdAt: new Date()
-                });
-                document.getElementById('ytInput').value = '';
-                alert("تم البث بنجاح! 🚀");
-            }
+            const val = document.getElementById('ytInput').value; const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if(vidId) { await db.collection("shared_videos").add({ videoId: vidId, ownerId: uID, ownerName: userName, ownerImg: userImg, views: 0, likes: 0, createdAt: new Date() }); document.getElementById('ytInput').value = ''; alert("تم البث بنجاح! 🚀"); }
         }
 
         function loadNotifs() {
             db.collection("users").doc(uID).collection("notifs").orderBy("createdAt", "desc").onSnapshot(snap => {
-                const list = document.getElementById('notifList');
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs">${d.message}</div>`;
-                    if(!d.seen) db.collection("users").doc(uID).collection("notifs").doc(doc.id).update({seen: true});
-                });
+                const list = document.getElementById('notifList'); list.innerHTML = '';
+                snap.forEach(doc => { const d = doc.data(); list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs">${d.message}</div>`; if(!d.seen) db.collection("users").doc(uID).collection("notifs").doc(doc.id).update({seen: true}); });
             });
-        }
-
-        function switchTab(t) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            if(t === 'profile_self') { openProfile(uID); return; }
-            document.getElementById(t + 'Page').classList.add('active-page');
-            stopVideos();
-            if(t === 'home') startTimerProcess(swiper.activeIndex);
         }
 
         function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); clearInterval(currentTimer); }
-        function showRewardPopup() {
-            const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = '+$0.0005';
-            document.body.appendChild(el); setTimeout(() => el.remove(), 2000);
-        }
+        function showRewardPopup() { const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = '+$0.0005'; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
         function renderChart() {
             const ctx = document.getElementById('tradingChart').getContext('2d');
             if(window.myChart) window.myChart.destroy();
-            window.myChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: ['1','2','3','4','5'], datasets: [{ data:[10,40,25,70,55], borderColor:'#dc2626', fill:true, backgroundColor:'rgba(220,38,38,0.1)', tension:0.4, pointRadius:0 }] },
-                options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
-            });
+            window.myChart = new Chart(ctx, { type: 'line', data: { labels: ['1','2','3','4','5'], datasets: [{ data:[10,40,25,70,55], borderColor:'#dc2626', fill:true, backgroundColor:'rgba(220,38,38,0.1)', tension:0.4, pointRadius:0 }] }, options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} } });
         }
 
         window.onload = init;
         function onYouTubeIframeAPIReady(){}
     </script>
 </body>
-    </html>
+</html>
