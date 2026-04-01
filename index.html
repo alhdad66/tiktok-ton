@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منصة العرض - عبود برو V5.3</title>
+    <title>Abood Pro V7</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -13,76 +13,135 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Cairo', sans-serif; color: white; overflow: hidden; }
-        .swiper { width: 100%; height: 100vh; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(10,10,10,0.95); display: flex; justify-content: space-around; padding: 15px 0; z-index: 10000; border-top: 1px solid #222; backdrop-filter: blur(10px); }
-        .page { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px; }
-        .active-page { display: flex !important; }
-        .timer-badge { position: absolute; top: 110px; left: 20px; background: #dc2626; padding: 8px 15px; border-radius: 50px; z-index: 1000; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
-        .admin-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid rgba(255,255,255,0.05); }
-        .reward-popup { position: fixed; left: 50%; top: 50%; color: #4ade80; font-weight: 900; font-size: 2.5rem; z-index: 20000; pointer-events: none; animation: floatUp 2s forwards; }
-        @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; transform: translate(-50%, -20px); } 100% { opacity:0; transform: translate(-50%, -120px); } }
+        
+        /* شريط التنقل السفلي كما في الصورة */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: #050505; display: flex; justify-content: space-around; align-items: center; padding: 10px 0; z-index: 1000; border-top: 1px solid #1a1a1a; height: 70px; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #555; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #fff; }
+        .nav-item span { font-size: 10px; font-weight: bold; margin-top: 2px; }
+
+        /* الزر الأحمر المركزي (+) */
+        .plus-btn { position: fixed; bottom: 35px; left: 50%; transform: translateX(-50%); width: 55px; height: 45px; background: #e63946; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; color: white; z-index: 1100; box-shadow: 0 0 15px rgba(230, 57, 70, 0.4); cursor: pointer; }
+
+        /* نافذة النشر والإحصائيات (تظهر عند ضغط +) */
+        #publishModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; flex-direction: column; padding: 20px; padding-top: 60px; backdrop-filter: blur(10px); }
+        .chart-container { background: #0a0a0a; border-radius: 30px; padding: 15px; border: 1px solid #1a1a1a; height: 180px; margin-bottom: 20px; }
+        
+        /* التايمر والأزرار الجانبية في الفيديو */
+        .timer-circle { position: absolute; top: 110px; left: 20px; width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 2px solid #e63946; display: flex; align-items: center; justify-content: center; z-index: 500; color: #e63946; font-weight: 900; }
+        .side-actions { position: absolute; bottom: 120px; right: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 500; }
+        .action-btn { width: 45px; height: 45px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); font-size: 20px; }
+
+        /* ستايل الصفحة */
+        .page { position: fixed; inset: 0; background: #000; z-index: 100; display: none; overflow-y: auto; padding-bottom: 100px; }
+        .active-page { display: block !important; }
+        
+        iframe { width: 100%; height: 100vh; transform: scale(1.65); pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <!-- Header / Balance -->
-    <div class="fixed top-8 left-6 right-6 z-[11000] flex justify-between items-center pointer-events-none">
-        <div class="bg-zinc-900/95 px-5 py-2.5 rounded-full border border-white/5 pointer-events-auto flex items-center gap-3 shadow-xl">
-            <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
-        </div>
-        <div class="flex gap-2">
-            <div id="adminIcon" onclick="switchTab('admin')" class="hidden bg-red-600 p-3 rounded-full pointer-events-auto cursor-pointer shadow-lg text-xl">👑</div>
-            <div onclick="switchTab('notifs')" class="bg-zinc-900/95 p-3 rounded-full border border-white/5 pointer-events-auto cursor-pointer relative">
-                <span class="text-xl">🔔</span>
-                <div id="notifBadge" class="absolute -top-1 -right-1 bg-white text-red-600 text-[10px] font-black w-4 h-4 rounded-full hidden flex items-center justify-center">0</div>
-            </div>
+    <!-- التوازن العلوي (ثابت) -->
+    <div class="fixed top-10 left-0 right-0 z-[1500] px-6 flex justify-between items-center">
+        <div id="adminBtn" onclick="switchTab('admin')" class="hidden w-11 h-11 bg-red-600 rounded-full flex items-center justify-center text-xl shadow-lg cursor-pointer">👑</div>
+        <div class="bg-zinc-900/80 px-4 py-2 rounded-full border border-white/5 flex items-center gap-2">
+            <div class="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+            <span id="mainBal" class="text-red-600 font-black italic">$0.0000</span>
         </div>
     </div>
 
-    <!-- Pages -->
-    <div id="homePage" class="page active-page !p-0">
-        <div id="videoTimer" class="timer-badge hidden"><span id="timerText" class="font-black text-xs text-white">10s</span></div>
-        <div class="swiper mySwiper"><div class="swiper-wrapper" id="videoWrapper"></div></div>
-    </div>
+    <!-- زر الزائد المركزي -->
+    <div class="plus-btn" onclick="togglePublishModal()">+</div>
 
-    <div id="statsPage" class="page p-6 pt-24">
-        <h2 class="text-2xl font-black italic mb-6">الإحصائيات 📊</h2>
+    <!-- نافذة النشر (الرسم البياني + الحقل) -->
+    <div id="publishModal">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="togglePublishModal()" class="text-zinc-500 text-sm">إغلاق ✕</button>
+            <h2 class="text-xl font-black italic text-red-600">إحصائيات القناة</h2>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="statsChart"></canvas>
+        </div>
+
         <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center"><p class="text-[9px] text-zinc-500 font-black uppercase">المشاهدات</p><h4 id="totalViews" class="text-2xl font-black text-red-500">0</h4></div>
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 text-center"><p class="text-[9px] text-zinc-500 font-black uppercase">التفاعل</p><h4 id="totalLikes" class="text-2xl font-black text-red-500">0</h4></div>
-        </div>
-        <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-20">
-            <input id="ytInput" type="text" placeholder="رابط فيديو يوتيوب..." class="w-full mb-3 bg-black/50 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-red-600">
-            <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-2xl font-black text-sm">نشر الفيديو</button>
-        </div>
-        <div id="myVideosList" class="space-y-3"></div>
-    </div>
-
-    <div id="profilePage" class="page !p-0">
-        <div class="pt-24 pb-10 text-center bg-gradient-to-b from-red-900/20 to-black">
-            <img id="uProfImg" src="" class="w-24 h-24 mx-auto mb-4 border-2 border-red-600 rounded-full object-cover">
-            <h2 id="uProfName" class="text-2xl font-black italic">...</h2>
-            <div class="px-10 mt-6 space-y-3">
-                <button id="followBtn" onclick="toggleFollow()" class="w-full bg-red-600 py-3 rounded-2xl font-black text-xs hidden">متابعة</button>
-                <button id="withdrawBtn" onclick="requestWithdraw()" class="w-full bg-white text-black py-3 rounded-2xl font-black text-xs hidden italic">سحب الأرباح 💸</button>
+            <div class="bg-zinc-900 p-4 rounded-2xl text-center border border-white/5">
+                <p class="text-[10px] text-zinc-500">المشاهدات</p>
+                <h4 id="stViews" class="text-xl font-black text-red-600">0</h4>
+            </div>
+            <div class="bg-zinc-900 p-4 rounded-2xl text-center border border-white/5">
+                <p class="text-[10px] text-zinc-500">التفاعل</p>
+                <h4 id="stLikes" class="text-xl font-black text-red-600">0</h4>
             </div>
         </div>
-        <div id="profileGrid" class="grid grid-cols-3 gap-0.5 mt-2"></div>
-    </div>
 
-    <div id="adminPage" class="page p-6 pt-24">
-        <h2 class="text-2xl font-black italic text-red-600 mb-6">طلبات السحب 🏦</h2>
-        <div id="withdrawRequestsList" class="space-y-4">
-            <!-- سيتم تحميل الطلبات هنا -->
+        <div class="bg-zinc-900 p-5 rounded-3xl border border-red-600/20">
+            <p class="text-xs text-zinc-400 mb-3 text-right">رابط فيديو يوتيوب الجديد:</p>
+            <div class="flex gap-2">
+                <button onclick="handlePublish()" class="bg-red-600 px-6 rounded-xl font-bold">نشر</button>
+                <input id="ytInput" type="text" placeholder="https://..." class="flex-1 bg-black border border-white/10 p-3 rounded-xl text-sm outline-none">
+            </div>
         </div>
     </div>
 
-    <div id="notifsPage" class="page p-6 pt-24"><h2 class="text-2xl font-black mb-8">التنبيهات 🔔</h2><div id="notifList" class="space-y-3"></div></div>
+    <!-- الصفحة الرئيسية -->
+    <div id="homePage" class="page active-page">
+        <div id="videoTimer" class="timer-circle hidden">10</div>
+        <div class="swiper mySwiper">
+            <div class="swiper-wrapper" id="videoWrapper"></div>
+        </div>
+    </div>
 
+    <!-- صفحة الأرباح -->
+    <div id="withdrawPage" class="page p-6 pt-32 text-right">
+        <h2 class="text-3xl font-black italic mb-8">أرباحي 💰</h2>
+        <div class="bg-zinc-900 p-8 rounded-3xl border border-white/5 mb-6 text-center">
+            <p class="text-zinc-500 text-sm mb-2">الرصيد المتاح للسحب</p>
+            <h1 id="withdrawBal" class="text-5xl font-black text-red-600">$0.0000</h1>
+        </div>
+        <button onclick="requestWithdraw()" class="w-full bg-white text-black py-5 rounded-2xl font-black text-lg">سحب الآن عبر USDT</button>
+    </div>
+
+    <!-- صفحة المهام -->
+    <div id="tasksPage" class="page p-6 pt-32 text-right">
+        <h2 class="text-3xl font-black italic mb-8">المهام اليومية 🔥</h2>
+        <div class="space-y-4">
+            <div class="bg-zinc-900 p-5 rounded-2xl border border-white/5 flex justify-between items-center">
+                <button class="bg-red-600 px-4 py-2 rounded-lg text-xs font-bold">ابدأ</button>
+                <div>
+                    <p class="font-bold">مشاهدة 10 فيديوهات</p>
+                    <p class="text-[10px] text-zinc-500">الجائزة: $0.005</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الملف الشخصي -->
+    <div id="profilePage" class="page">
+        <div class="pt-32 pb-12 text-center bg-zinc-900/50">
+            <img id="uProfImg" src="" class="w-24 h-24 rounded-full mx-auto border-4 border-red-600 shadow-2xl mb-4 object-cover">
+            <h2 id="uProfName" class="text-2xl font-black">...</h2>
+            <div class="flex justify-center gap-10 mt-6">
+                <div><p id="followersCount" class="font-black text-red-600 text-xl">0</p><span class="text-[10px] text-zinc-500">متابع</span></div>
+                <div><p class="font-black text-red-600 text-xl">0</p><span class="text-[10px] text-zinc-500">يتابع</span></div>
+            </div>
+        </div>
+        <div id="profileGrid" class="grid grid-cols-3 gap-1 p-1 mt-4"></div>
+    </div>
+
+    <!-- لوحة الإدارة -->
+    <div id="adminPage" class="page p-6 pt-32 text-right">
+        <h2 class="text-2xl font-black text-red-600 mb-6">طلبات السحب المعلقة</h2>
+        <div id="withdrawRequestsList" class="space-y-4"></div>
+    </div>
+
+    <!-- الشريط السفلي المطابق للصور -->
     <div class="nav-bar">
-        <div onclick="switchTab('home')" class="text-2xl p-2">🏠</div>
-        <div onclick="switchTab('stats')" class="bg-red-600 w-12 h-10 rounded-xl flex items-center justify-center font-black text-2xl">+</div>
-        <div onclick="switchTab('profile_self')" class="text-2xl p-2">👤</div>
+        <div onclick="switchTab('profile_self')" class="nav-item"><span>👤</span><span>حسابي</span></div>
+        <div onclick="switchTab('withdraw')" class="nav-item"><span>💰</span><span>الأرباح</span></div>
+        <div class="flex-1"></div> <!-- فراغ للزر المركزي -->
+        <div onclick="switchTab('tasks')" class="nav-item"><span>🔥</span><span>المهام</span></div>
+        <div onclick="switchTab('home')" class="nav-item active"><span>🏠</span><span>الرئيسية</span></div>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -94,28 +153,24 @@
         const db = firebase.firestore();
 
         const tg = window.Telegram.WebApp;
-        const tgUser = tg.initDataUnsafe?.user || {};
-        const uID = String(tgUser.id || "88583019"); 
-        const adminID = "7416599626"; 
-        const userName = tgUser.first_name || "مستخدم";
-        const userImg = tgUser.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png";
+        const uID = String(tg.initDataUnsafe?.user?.id || "7416599626");
+        const adminID = "7416599626";
 
-        let allVideos = [], swiper, players = {}, balance = 0;
+        let allVideos = [], swiper, players = {}, balance = 0, currentTimer, watchedList = [];
 
         async function init() {
             const userRef = db.collection("users").doc(uID);
             const doc = await userRef.get();
-            if(!doc.exists) await userRef.set({ name: userName, img: userImg, balance: 0, likedVids: [], watchedVids: [], following: [], followersCount: 0 });
-
-            if(uID === adminID) {
-                document.getElementById('adminIcon').classList.remove('hidden');
-                loadWithdrawRequests(); // تحميل الطلبات للإدمن
-            }
+            if(!doc.exists) await userRef.set({ name: tg.initDataUnsafe?.user?.first_name || "user@", img: tg.initDataUnsafe?.user?.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png", balance: 0, watchedVids: [], following: [], followersCount: 0 });
+            
+            if(uID === adminID) document.getElementById('adminBtn').classList.remove('hidden');
 
             userRef.onSnapshot(s => {
                 if(s.exists) {
                     balance = s.data().balance || 0;
+                    watchedList = s.data().watchedVids || [];
                     document.getElementById('mainBal').innerText = `$${balance.toFixed(4)}`;
+                    document.getElementById('withdrawBal').innerText = `$${balance.toFixed(4)}`;
                 }
             });
 
@@ -124,67 +179,112 @@
                 renderHome();
                 updateStats();
             });
+
+            initChart();
         }
 
-        async function requestWithdraw() {
-            if(balance < 0.01) return alert("الحد الأدنى للسحب هو $0.01");
-            const method = prompt("أدخل عنوان محفظة USDT أو TON:");
-            if(!method) return;
-
-            const amount = balance;
-            await db.collection("users").doc(uID).update({ balance: 0 });
-            
-            await db.collection("withdraws").add({
-                userId: uID,
-                userName: userName,
-                amount: amount,
-                method: method,
-                status: "pending",
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        function renderHome() {
+            const wrap = document.getElementById('videoWrapper');
+            wrap.innerHTML = '';
+            allVideos.forEach((v, i) => {
+                wrap.innerHTML += `
+                <div class="swiper-slide relative">
+                    <div id="player-${i}"></div>
+                    <div class="side-actions">
+                        <div onclick="openProfile('${v.ownerId}')"><img src="${v.ownerImg}" class="w-11 h-11 rounded-full border-2 border-red-600 mb-4"></div>
+                        <div class="flex flex-col items-center"><div class="action-btn text-red-500">❤️</div><span class="text-[10px] mt-1">${v.likes || 0}</span></div>
+                        <div class="flex flex-col items-center"><div class="action-btn">💬</div><span class="text-[10px] mt-1">${v.views || 0}</span></div>
+                        <div class="flex flex-col items-center"><div class="action-btn">🔁</div><span class="text-[10px] mt-1">مشاركة</span></div>
+                    </div>
+                </div>`;
             });
-
-            alert("تم إرسال طلب السحب بنجاح! راجع لوحة الإدارة (إذا كنت أنت الإدمن).");
+            if(swiper) swiper.destroy();
+            swiper = new Swiper(".mySwiper", { direction: "vertical", on: { slideChange: () => handleSlideChange() } });
+            setTimeout(initPlayers, 500);
         }
 
-        function loadWithdrawRequests() {
-            // استعلام بسيط بدون orderBy لتجنب مشاكل الفهرسة (Index)
-            db.collection("withdraws").where("status", "==", "pending").onSnapshot(snap => {
-                const list = document.getElementById('withdrawRequestsList');
-                list.innerHTML = '';
-                if(snap.empty) {
-                    list.innerHTML = '<p class="text-center opacity-30 py-10">لا يوجد طلبات سحب معلقة</p>';
-                    return;
-                }
-                snap.forEach(doc => {
-                    const r = doc.data();
-                    list.innerHTML += `
-                        <div class="admin-card p-4 rounded-2xl border border-white/5">
-                            <p class="text-red-500 font-black text-sm mb-2">طلب من: ${r.userName}</p>
-                            <p class="text-white text-xl font-black">$${r.amount.toFixed(4)}</p>
-                            <p class="text-zinc-500 text-[10px] break-all mt-1">${r.method}</p>
-                            <div class="flex gap-2 mt-4">
-                                <button onclick="handleReq('${doc.id}', '${r.userId}', 'approved')" class="flex-1 bg-green-600 py-2 rounded-lg font-black text-xs text-white">موافقة</button>
-                                <button onclick="handleReq('${doc.id}', '${r.userId}', 'rejected', ${r.amount})" class="flex-1 bg-red-600 py-2 rounded-lg font-black text-xs text-white">رفض</button>
-                            </div>
-                        </div>`;
+        function initPlayers() {
+            allVideos.forEach((v, i) => {
+                players[i] = new YT.Player(`player-${i}`, { videoId: v.videoId, playerVars: { autoplay: i===0?1:0, controls: 0, modestbranding: 1, playsinline: 1 },
+                    events: { onStateChange: (e) => { if(e.data === YT.PlayerState.PLAYING) startTimer(i); } }
                 });
             });
         }
 
-        async function handleReq(id, uid, action, amount = 0) {
-            await db.collection("withdraws").doc(id).update({ status: action });
-            if(action === 'rejected') {
-                await db.collection("users").doc(uid).update({ balance: firebase.firestore.FieldValue.increment(amount) });
-            }
-            alert("تم تنفيذ الإجراء");
+        function handleSlideChange() {
+            clearInterval(currentTimer);
+            document.getElementById('videoTimer').classList.add('hidden');
+            Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo());
+            if(players[swiper.activeIndex]?.playVideo) players[swiper.activeIndex].playVideo();
         }
 
-        // --- بقية وظائف التطبيق ---
+        function startTimer(idx) {
+            if(watchedList.includes(allVideos[idx].id)) return;
+            clearInterval(currentTimer);
+            let timeLeft = 10;
+            const badge = document.getElementById('videoTimer');
+            badge.classList.remove('hidden');
+            badge.innerText = timeLeft;
+            currentTimer = setInterval(async () => {
+                timeLeft--;
+                badge.innerText = timeLeft;
+                if(timeLeft <= 0) {
+                    clearInterval(currentTimer);
+                    badge.classList.add('hidden');
+                    awardUser(allVideos[idx].id);
+                }
+            }, 1000);
+        }
+
+        async function awardUser(vidId) {
+            await db.collection("users").doc(uID).update({
+                balance: firebase.firestore.FieldValue.increment(0.0005),
+                watchedVids: firebase.firestore.FieldValue.arrayUnion(vidId)
+            });
+            await db.collection("shared_videos").doc(vidId).update({ views: firebase.firestore.FieldValue.increment(1) });
+        }
+
+        function togglePublishModal() {
+            const m = document.getElementById('publishModal');
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        async function handlePublish() {
+            const val = document.getElementById('ytInput').value;
+            const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
+            if(!vidId) return alert("الرابط غير صحيح");
+            await db.collection("shared_videos").add({ videoId: vidId, ownerId: uID, ownerName: tg.initDataUnsafe?.user?.first_name || "user@", ownerImg: tg.initDataUnsafe?.user?.photo_url || "", views: 0, likes: 0 });
+            document.getElementById('ytInput').value = '';
+            togglePublishModal();
+            alert("تم النشر بنجاح!");
+        }
+
         function switchTab(t) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             if(t === 'profile_self') { openProfile(uID); return; }
-            document.getElementById(t + 'Page').classList.add('active-page');
-            stopVideos();
+            document.getElementById(t + 'Page')?.classList.add('active-page');
+            Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo());
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['1', '2', '3', '4', '5', '6'],
+                    datasets: [{
+                        data: [5, 12, 8, 20, 15, 25],
+                        borderColor: '#e63946',
+                        backgroundColor: 'rgba(230, 57, 70, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 4,
+                        pointRadius: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+            });
         }
 
         async function openProfile(id) {
@@ -192,54 +292,18 @@
             const data = doc.data();
             document.getElementById('uProfName').innerText = data.name;
             document.getElementById('uProfImg').src = data.img;
-            
-            const wBtn = document.getElementById('withdrawBtn');
-            const fBtn = document.getElementById('followBtn');
-            
-            if(id === uID) { wBtn.classList.remove('hidden'); fBtn.classList.add('hidden'); }
-            else { wBtn.classList.add('hidden'); fBtn.classList.remove('hidden'); }
-            
+            document.getElementById('followersCount').innerText = data.followersCount || 0;
             const grid = document.getElementById('profileGrid'); grid.innerHTML = '';
             allVideos.filter(v => v.ownerId === id).forEach(v => {
-                grid.innerHTML += `<div class="aspect-square bg-zinc-900"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover"></div>`;
+                grid.innerHTML += `<div class="aspect-[3/4] bg-zinc-900 rounded-lg overflow-hidden"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover"></div>`;
             });
             switchTab('profile');
         }
 
-        function renderHome() {
-            const wrap = document.getElementById('videoWrapper');
-            wrap.innerHTML = '';
-            allVideos.forEach((v, i) => {
-                wrap.innerHTML += `<div class="swiper-slide relative"><div id="player-${i}"></div><div class="absolute inset-0 z-10 pointer-events-none"><div class="absolute right-5 bottom-32 pointer-events-auto flex flex-col items-center gap-5"><img onclick="openProfile('${v.ownerId}')" src="${v.ownerImg}" class="w-12 h-12 rounded-full border-2 border-red-600"><span class="text-2xl">❤️</span><span class="text-xs font-black">${v.likes || 0}</span></div></div></div>`;
-            });
-            if(swiper) swiper.destroy();
-            swiper = new Swiper(".mySwiper", { direction: "vertical", on: { slideChange: () => { stopVideos(); startVid(swiper.activeIndex); } } });
-            setTimeout(initPlayers, 500);
-        }
-
-        function initPlayers() {
-            allVideos.forEach((v, i) => {
-                players[i] = new YT.Player(`player-${i}`, { videoId: v.videoId, playerVars: { autoplay: i===0?1:0, controls: 0, modestbranding: 1, playsinline: 1 } });
-            });
-        }
-
-        function startVid(i) { if(players[i]?.playVideo) players[i].playVideo(); }
-        function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); }
-
-        async function handlePublish() {
-            const val = document.getElementById('ytInput').value;
-            const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
-            if(vidId) {
-                await db.collection("shared_videos").add({ videoId: vidId, ownerId: uID, ownerName: userName, ownerImg: userImg, views: 0, likes: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-                document.getElementById('ytInput').value = '';
-                alert("تم النشر!");
-            }
-        }
-
         function updateStats() {
             const mine = allVideos.filter(v => v.ownerId === uID);
-            document.getElementById('totalViews').innerText = mine.reduce((a, b) => a + (b.views || 0), 0);
-            document.getElementById('totalLikes').innerText = mine.reduce((a, b) => a + (b.likes || 0), 0);
+            document.getElementById('stViews').innerText = mine.reduce((a, b) => a + (b.views || 0), 0);
+            document.getElementById('stLikes').innerText = mine.reduce((a, b) => a + (b.likes || 0), 0);
         }
 
         window.onload = init;
