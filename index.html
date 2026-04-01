@@ -3,463 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>فـقـرينـر BOT - التداول الاجتماعي</title>
-    
+    <title>منصة العرض - عبود</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
         
-        :root {
-            --primary: #ff3b3b;
-            --secondary: #00f2ea;
-            --bg-dark: #050505;
-            --card-bg: #121212;
+        body, html { 
+            margin: 0; padding: 0; height: 100%; background: #000; 
+            font-family: 'Cairo', sans-serif; color: white; overflow: hidden; 
         }
 
-        body, html {
-            margin: 0; padding: 0; height: 100%; width: 100%;
-            background: var(--bg-dark);
-            font-family: 'Cairo', sans-serif;
-            color: white;
-            overflow: hidden;
-        }
-
-        /* ستايل الفيديو مثل تيك توك */
+        /* حاوية الفيديو - تأكد أنها تستقبل اللمس */
         .video-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: #000;
+            position: absolute; top: 15%; left: 0; width: 100%; height: 60%;
+            z-index: 5; /* خلف طبقة الأزرار ولكن مسموح لمسها */
+        }
+        
+        iframe { 
+            width: 100% !important; height: 100% !important; 
+            pointer-events: auto !important; /* تفعيل اللمس */
         }
 
-        iframe {
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+        /* طبقة الأزرار - التعديل الجوهري */
+        .interaction-layer {
+            position: absolute; inset: 0; z-index: 20; 
+            pointer-events: none; /* لا تمنع اللمس عما خلفها */
+            display: flex; flex-direction: column; justify-content: flex-end;
         }
 
-        /* الأزرار الجانبية */
+        /* السماح باللمس فقط للعناصر التفاعلية داخل الطبقة */
+        .interactive-element {
+            pointer-events: auto !important;
+        }
+
         .side-bar {
-            position: absolute;
-            right: 12px;
-            bottom: 120px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            z-index: 100;
+            position: absolute; right: 15px; bottom: 120px;
+            display: flex; flex-direction: column; align-items: center; gap: 25px;
         }
 
-        .avatar-wrapper {
-            position: relative;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: 2px solid white;
-            margin-bottom: 10px;
+        .nav-bar {
+            position: fixed; bottom: 0; width: 100%; height: 80px;
+            background: #000; display: flex; justify-content: space-around;
+            align-items: center; z-index: 1000; border-top: 1px solid #111;
         }
 
-        .plus-icon {
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--primary);
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            border: 2px solid #000;
-        }
-
-        .action-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .action-btn i {
-            font-size: 28px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-        }
-
-        /* لوحة التداول والإحصائيات */
-        .stats-overlay {
-            position: absolute;
-            top: 50px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
-            z-index: 1000;
-        }
-
-        .balance-badge {
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 8px 15px;
-            border-radius: 50px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* شريط التنقل السفلي */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            height: 75px;
-            background: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0.8));
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 2000;
-            border-top: 0.5px solid rgba(255,255,255,0.1);
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            opacity: 0.6;
-            transition: 0.3s;
-        }
-
-        .nav-item.active {
-            opacity: 1;
-            color: white;
-        }
-
-        .publish-btn {
-            background: white;
-            color: black;
-            width: 50px;
-            height: 35px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-left: 4px solid var(--secondary);
-            border-right: 4px solid var(--primary);
-        }
-
-        /* الصفحات المنبثقة */
         .page {
-            position: fixed;
-            inset: 0;
-            background: var(--bg-dark);
-            z-index: 3000;
-            display: none;
-            padding: 20px;
-            overflow-y: auto;
+            position: fixed; inset: 0; background: #000; z-index: 500;
+            display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px;
+        }
+        .active-page { display: flex !important; }
+
+        .red-badge {
+            background: rgba(220, 38, 38, 0.2); border: 1px solid rgba(220, 38, 38, 0.5);
+            padding: 6px 14px; border-radius: 50px; display: flex; align-items: center; gap: 6px;
         }
 
-        .page.active { display: block; }
-
-        .stat-box {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(255,255,255,0.05);
+        .notif-badge {
+            position: absolute; top: -5px; right: -5px; background: #fff;
+            color: #dc2626; width: 18px; height: 18px; border-radius: 50%;
+            font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center;
         }
 
-        /* أنيميشن الربح */
-        @keyframes coin-fly {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+        .reward-pop {
+            position: fixed; top: 30%; left: 50%; transform: translateX(-50%);
+            color: #ef4444; font-weight: 900; font-size: 2rem; z-index: 3000;
+            animation: floatUp 2s forwards; pointer-events: none;
         }
-        .coin-anim {
-            position: absolute;
-            color: #ffd700;
-            font-weight: bold;
-            pointer-events: none;
-            animation: coin-fly 1s ease-out forwards;
-        }
+        @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; } 100% { opacity:0; transform: translate(-50%, -100px); } }
     </style>
 </head>
 <body>
 
-    <!-- الواجهة الرئيسية (الفيديوهات) -->
-    <div id="homeView" class="h-full w-full">
-        <!-- عداد الأرباح العلوي -->
-        <div class="stats-overlay">
-            <div class="balance-badge">
-                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span id="liveBalance" class="font-bold text-green-400">$0.0000</span>
-            </div>
-            <div class="bg-black/40 backdrop-blur-md p-2 rounded-full border border-white/10">
-                🔔
-            </div>
+    <!-- الجزء العلوي: الرصيد والتنبيهات باللون الأحمر -->
+    <div class="fixed top-10 left-6 right-6 z-[1500] flex justify-between items-center pointer-events-none">
+        <div class="red-badge interactive-element">
+            <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
+            <div class="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
         </div>
 
-        <div class="swiper mySwiper h-full w-full">
-            <div class="swiper-wrapper" id="videoWrapper">
-                <!-- الفيديوهات سيتم تحميلها هنا -->
-            </div>
+        <div id="videoTimer" class="red-badge hidden !bg-red-600">
+            <span id="timerText" class="text-white font-black text-xs">10s</span>
         </div>
+
+        <div onclick="switchTab('notifs')" class="relative interactive-element cursor-pointer p-2 bg-zinc-900 rounded-full">
+            <span class="text-xl">🔔</span>
+            <div id="notifBadge" class="notif-badge hidden">0</div>
+        </div>
+    </div>
+
+    <!-- الصفحة الرئيسية -->
+    <div id="homePage" class="page active-page !p-0">
+        <div class="swiper mySwiper w-full h-full">
+            <div class="swiper-wrapper" id="videoWrapper"></div>
+        </div>
+    </div>
+
+    <!-- صفحة الإشعارات -->
+    <div id="notifsPage" class="page p-6 pt-24">
+        <div class="flex items-center gap-4 mb-8">
+            <button onclick="switchTab('home')" class="bg-zinc-900 px-4 py-2 rounded-xl text-sm font-bold">رجوع</button>
+            <h2 class="text-2xl font-black italic">الإشعارات 🔔</h2>
+        </div>
+        <div id="notifList" class="space-y-4"></div>
+    </div>
+
+    <!-- صفحة التحكم -->
+    <div id="statsPage" class="page p-6 pt-28">
+        <h2 class="text-3xl font-black italic text-center mb-10 text-red-500">لوحة التحكم</h2>
+        <div class="bg-zinc-900/50 p-8 rounded-[2rem] border border-white/5">
+            <input id="ytInput" type="text" placeholder="رابط يوتيوب..." class="w-full bg-black border border-white/10 p-5 rounded-2xl mb-4 text-center">
+            <button onclick="handlePublish()" class="w-full bg-red-600 py-4 rounded-2xl font-black">نشر الفيديو</button>
+        </div>
+        <div id="myVideosList" class="mt-8 space-y-3"></div>
     </div>
 
     <!-- شريط التنقل السفلي -->
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="showTab('home')">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span class="text-[10px] mt-1">الرئيسية</span>
-        </div>
-        <div class="nav-item" onclick="showTab('stats')">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
-            <span class="text-[10px] mt-1">الإحصائيات</span>
-        </div>
-        <div class="publish-btn" onclick="showTab('publish')">+</div>
-        <div class="nav-item" onclick="showTab('referral')">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-            <span class="text-[10px] mt-1">الأصدقاء</span>
-        </div>
-        <div class="nav-item" onclick="showTab('profile')">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <span class="text-[10px] mt-1">الملف</span>
-        </div>
-    </div>
-
-    <!-- صفحة الإحصائيات (شاشة التداول) -->
-    <div id="statsPage" class="page">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-black">تحليلات التفاعل</h2>
-            <button onclick="hidePages()" class="text-gray-400">✖</button>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-3 mb-6">
-            <div class="stat-box text-center">
-                <p class="text-xs text-gray-400 mb-1">إجمالي المشاهدات</p>
-                <h3 id="totalViews" class="text-xl font-bold">0</h3>
-            </div>
-            <div class="stat-box text-center">
-                <p class="text-xs text-gray-400 mb-1">معدل التفاعل</p>
-                <h3 class="text-xl font-bold text-secondary">98.4%</h3>
-            </div>
-        </div>
-
-        <div class="stat-box">
-            <h4 class="font-bold mb-4">نمو الأرباح (Live)</h4>
-            <div class="h-32 w-full flex items-end gap-1 px-2">
-                <div class="bg-primary/20 w-full h-1/4 rounded-t"></div>
-                <div class="bg-primary/40 w-full h-2/4 rounded-t"></div>
-                <div class="bg-primary/60 w-full h-3/4 rounded-t"></div>
-                <div class="bg-primary w-full h-full rounded-t animate-pulse"></div>
-                <div class="bg-primary/80 w-full h-2/3 rounded-t"></div>
-            </div>
-        </div>
-
-        <div class="stat-box">
-            <h4 class="font-bold mb-3">أكثر الفيديوهات ربحاً</h4>
-            <div id="topVideosList" class="space-y-3">
-                <!-- قائمة الفيديوهات -->
-            </div>
-        </div>
-    </div>
-
-    <!-- صفحة النشر -->
-    <div id="publishPage" class="page">
-        <h2 class="text-2xl font-black mb-6 text-center">نشر فيديو للجمهور</h2>
-        <div class="stat-box">
-            <input id="videoUrl" type="text" placeholder="انسخ رابط يوتيوب هنا..." class="w-full bg-transparent border-b border-white/20 py-3 outline-none">
-            <p class="text-[10px] text-gray-500 mt-2">مسموح بفيديوهات Shorts أو الفيديوهات العادية.</p>
-        </div>
-        <button onclick="publish()" class="w-full bg-primary py-4 rounded-xl font-black text-lg shadow-lg shadow-primary/20">نشر الآن 🚀</button>
-        <button onclick="hidePages()" class="w-full mt-4 text-gray-500">إلغاء</button>
+    <div class="nav-bar">
+        <div onclick="switchTab('profile_self')" class="interactive-element text-3xl opacity-40">👤</div>
+        <div onclick="switchTab('stats')" class="interactive-element bg-red-600 w-16 h-12 rounded-2xl flex items-center justify-center text-3xl font-black">+</div>
+        <div onclick="switchTab('home')" class="interactive-element text-3xl">🏠</div>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <script>
-        const firebaseConfig = { apiKey: "", authDomain: "tik-ton-92124.firebaseapp.com", projectId: "tik-ton-92124" };
-        firebase.initializeApp(firebaseConfig);
+        const config = { apiKey: "", authDomain: "tik-ton-92124.firebaseapp.com", projectId: "tik-ton-92124" };
+        firebase.initializeApp(config);
         const db = firebase.firestore();
+
         const tg = window.Telegram.WebApp;
-
         const uID = String(tg.initDataUnsafe?.user?.id || "88583019");
-        const uName = tg.initDataUnsafe?.user?.first_name || "Guest";
+        const userName = tg.initDataUnsafe?.user?.first_name || "عبود";
+        const userImg = tg.initDataUnsafe?.user?.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png";
 
-        let userStats = { balance: 0, views: 0, totalEarned: 0 };
-        let players = {};
-        let activeTimer = null;
+        let allVideos = [], swiper, players = {}, currentTimer = null;
+        let myLikes = [], watchedVids = [];
 
-        // تهيئة البيانات
         async function init() {
-            // جلب بيانات المستخدم
-            db.collection("users").doc(uID).onSnapshot(doc => {
-                if(doc.exists) {
-                    userStats = doc.data();
-                    updateUI();
-                } else {
-                    db.collection("users").doc(uID).set({ name: uName, balance: 0, views: 0, totalEarned: 0 });
+            const userRef = db.collection("users").doc(uID);
+            userRef.onSnapshot(d => {
+                if(d.exists) {
+                    const data = d.data();
+                    document.getElementById('mainBal').innerText = `$${(data.balance || 0).toFixed(4)}`;
+                    myLikes = data.likedVids || [];
+                    watchedVids = data.watchedVids || [];
                 }
             });
 
-            loadVideos();
-        }
-
-        function updateUI() {
-            document.getElementById('liveBalance').innerText = `$${userStats.balance.toFixed(4)}`;
-            document.getElementById('totalViews').innerText = userStats.views || 0;
-        }
-
-        async function loadVideos() {
-            const snap = await db.collection("shared_videos").orderBy("createdAt", "desc").limit(10).get();
-            const videos = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            
-            const container = document.getElementById('videoWrapper');
-            container.innerHTML = videos.map((v, i) => `
-                <div class="swiper-slide h-full">
-                    <div class="video-container">
-                        <div id="player-${i}"></div>
-                    </div>
-                    
-                    <!-- الأزرار الجانبية -->
-                    <div class="side-bar">
-                        <div class="avatar-wrapper">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${v.ownerId}" class="rounded-full">
-                            <div class="plus-icon">+</div>
-                        </div>
-                        <div class="action-btn" onclick="animateHeart(this)">
-                            <span class="text-3xl">❤️</span>
-                            <span class="text-xs font-bold">${v.likes || 0}</span>
-                        </div>
-                        <div class="action-btn">
-                            <span class="text-3xl">💬</span>
-                            <span class="text-xs font-bold">12</span>
-                        </div>
-                        <div class="action-btn">
-                            <span class="text-3xl">🚀</span>
-                            <span class="text-xs font-bold">شارك</span>
-                        </div>
-                    </div>
-
-                    <!-- تفاصيل الفيديو السفلية -->
-                    <div class="absolute left-4 bottom-24 z-[100] max-w-[70%] pointer-events-none">
-                        <h3 class="font-black text-lg mb-1">@${v.ownerName}</h3>
-                        <p class="text-sm line-clamp-2 opacity-90">${v.title || 'شكراً لمشاهدة هذا الفيديو ودعم المحتوى العربي ❤️'}</p>
-                        <div class="flex items-center gap-2 mt-3 bg-white/10 w-fit px-3 py-1 rounded-full backdrop-blur-md">
-                            <span class="text-xs">🎵 الصوت الأصلي - ${v.ownerName}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-
-            initSwiper();
-            initPlayers(videos);
-            loadTopVideos(videos);
-        }
-
-        function initSwiper() {
-            const swiper = new Swiper(".mySwiper", {
-                direction: "vertical",
-                on: {
-                    slideChange: function() {
-                        stopAll();
-                        playVideo(this.activeIndex);
-                    }
-                }
+            db.collection("users").doc(uID).collection("notifs").where("seen", "==", false).onSnapshot(snap => {
+                const b = document.getElementById('notifBadge');
+                if(snap.size > 0) { b.innerText = snap.size; b.classList.remove('hidden'); }
+                else { b.classList.add('hidden'); }
             });
+
+            const snap = await db.collection("shared_videos").orderBy("createdAt", "desc").get();
+            allVideos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            renderHome();
         }
 
-        function initPlayers(videos) {
-            videos.forEach((v, i) => {
+        function renderHome() {
+            const wrap = document.getElementById('videoWrapper');
+            wrap.innerHTML = '';
+            allVideos.forEach((v, i) => {
+                const isLiked = myLikes.includes(v.id);
+                wrap.innerHTML += `
+                    <div class="swiper-slide bg-black">
+                        <div class="video-container"><div id="player-${i}"></div></div>
+                        <div class="interaction-layer">
+                            <div class="side-bar">
+                                <div class="interactive-element">
+                                    <img src="${v.ownerImg}" class="w-14 h-14 rounded-full border-2 border-red-600 object-cover">
+                                </div>
+                                <div onclick="handleLike('${v.id}', '${v.ownerId}')" class="interactive-element text-center cursor-pointer">
+                                    <span id="heart-${v.id}" class="text-4xl" style="filter: ${isLiked ? 'grayscale(0)' : 'grayscale(1)'}">❤️</span>
+                                    <p id="count-${v.id}" class="text-sm font-black mt-1 text-white">${v.likes || 0}</p>
+                                </div>
+                                <div class="interactive-element text-3xl">🚀</div>
+                            </div>
+                            <div class="p-6 mb-20 text-right">
+                                <h3 class="text-xl font-black">@${v.ownerName}</h3>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            if(swiper) swiper.destroy();
+            swiper = new Swiper(".mySwiper", { 
+                direction: "vertical", 
+                on: { slideChange: () => { stopAll(); playIdx(swiper.activeIndex); } } 
+            });
+            setTimeout(initPlayers, 500);
+            playIdx(0);
+        }
+
+        function initPlayers() {
+            allVideos.forEach((v, i) => {
                 players[i] = new YT.Player(`player-${i}`, {
                     videoId: v.videoId,
-                    playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0, playsinline: 1 },
-                    events: {
-                        onStateChange: (e) => { if(e.data == 1) startRewardTimer(); else stopRewardTimer(); }
-                    }
+                    playerVars: { autoplay: 0, controls: 1, modestbranding: 1, playsinline: 1 },
+                    events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startTimer(i); } }
                 });
             });
-            setTimeout(() => playVideo(0), 1000);
         }
 
-        function playVideo(idx) {
-            if(players[idx] && players[idx].playVideo) players[idx].playVideo();
-        }
+        function playIdx(idx) { if(players[idx]?.playVideo) players[idx].playVideo(); }
 
         function stopAll() {
-            Object.values(players).forEach(p => { if(p.pauseVideo) p.pauseVideo(); });
-            stopRewardTimer();
+            Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo());
+            clearInterval(currentTimer);
+            document.getElementById('videoTimer').classList.add('hidden');
         }
 
-        function startRewardTimer() {
-            if(activeTimer) return;
-            activeTimer = setInterval(() => {
-                userStats.balance += 0.0001;
-                db.collection("users").doc(uID).update({ 
-                    balance: firebase.firestore.FieldValue.increment(0.0001),
-                    views: firebase.firestore.FieldValue.increment(1)
-                });
-                showCoinAnim();
-            }, 5000); // ربح كل 5 ثواني مشاهدة
+        function startTimer(idx) {
+            clearInterval(currentTimer);
+            const v = allVideos[idx];
+            if(!v || v.ownerId === uID || watchedVids.includes(v.id)) return;
+            
+            const badge = document.getElementById('videoTimer');
+            badge.classList.remove('hidden');
+            let sec = 10;
+            document.getElementById('timerText').innerText = sec + "s";
+            currentTimer = setInterval(async () => {
+                sec--;
+                document.getElementById('timerText').innerText = sec + "s";
+                if(sec <= 0) {
+                    clearInterval(currentTimer);
+                    badge.classList.add('hidden');
+                    showReward();
+                    await db.collection("users").doc(uID).update({ 
+                        balance: firebase.firestore.FieldValue.increment(0.0005),
+                        watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id)
+                    });
+                }
+            }, 1000);
         }
 
-        function stopRewardTimer() {
-            clearInterval(activeTimer);
-            activeTimer = null;
+        async function handleLike(vidId, ownerId) {
+            const isLiked = myLikes.includes(vidId);
+            const heart = document.getElementById(`heart-${vidId}`);
+            const countText = document.getElementById(`count-${vidId}`);
+            let count = parseInt(countText.innerText);
+
+            if(isLiked) {
+                heart.style.filter = "grayscale(1)";
+                countText.innerText = Math.max(0, count - 1);
+                myLikes = myLikes.filter(id => id !== vidId);
+                await db.collection("shared_videos").doc(vidId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
+                await db.collection("users").doc(uID).update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
+            } else {
+                heart.style.filter = "grayscale(0)";
+                countText.innerText = count + 1;
+                myLikes.push(vidId);
+                await db.collection("shared_videos").doc(vidId).update({ likes: firebase.firestore.FieldValue.increment(1) });
+                await db.collection("users").doc(uID).update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidId) });
+            }
         }
 
-        function showCoinAnim() {
-            const anim = document.createElement('div');
-            anim.className = 'coin-anim';
-            anim.style.left = '20px';
-            anim.style.top = '60px';
-            anim.innerText = '+$0.0001';
-            document.body.appendChild(anim);
-            setTimeout(() => anim.remove(), 1000);
+        async function switchTab(t) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            if(t === 'profile_self') { alert("صفحة الملف قيد الصيانة"); return; }
+            document.getElementById(t + 'Page').classList.add('active-page');
+            stopAll();
+            if(t === 'home') playIdx(swiper.activeIndex);
         }
 
-        function showTab(tab) {
-            hidePages();
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            if(tab === 'stats') document.getElementById('statsPage').classList.add('active');
-            if(tab === 'publish') document.getElementById('publishPage').classList.add('active');
-            // التبديل بين الرئيسية وغيرها
-        }
-
-        function hidePages() {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        }
-
-        function loadTopVideos(videos) {
-            const list = document.getElementById('topVideosList');
-            list.innerHTML = videos.slice(0, 3).map(v => `
-                <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-primary rounded flex items-center justify-center font-bold">#</div>
-                        <div>
-                            <p class="text-sm font-bold">فيديو @${v.ownerName}</p>
-                            <p class="text-[10px] text-gray-500">العائد: $0.42 لكل 1k</p>
-                        </div>
-                    </div>
-                    <div class="text-green-500 text-xs font-bold">+14% ↑</div>
-                </div>
-            `).join('');
-        }
-
-        function animateHeart(btn) {
-            tg.HapticFeedback.impactOccurred('medium');
-            btn.querySelector('span:first-child').style.transform = 'scale(1.5)';
-            setTimeout(() => btn.querySelector('span:first-child').style.transform = 'scale(1)', 200);
-        }
-
+        function showReward() { const p = document.createElement('div'); p.className='reward-pop'; p.innerText='+$0.0005'; document.body.appendChild(p); setTimeout(()=>p.remove(),2000); }
         window.onload = init;
     </script>
 </body>
