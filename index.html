@@ -27,13 +27,12 @@
         @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; transform: translate(-50%, -20px); } 100% { opacity:0; transform: translate(-50%, -120px); } }
         .yt-frame-container { position: relative; width: 100%; height: 100%; pointer-events: none; }
         iframe { width: 100%; height: 100%; pointer-events: none; }
-        
-        /* Admin Styles */
         .admin-card { background: #111; border: 1px solid #222; border-radius: 20px; padding: 15px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
+    <!-- Balance Header -->
     <div class="fixed top-8 left-6 right-6 z-[11000] flex justify-between items-center pointer-events-none">
         <div class="bg-zinc-900/95 px-5 py-2.5 rounded-full border border-white/5 pointer-events-auto flex items-center gap-3 shadow-xl">
             <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
@@ -50,6 +49,7 @@
         </div>
     </div>
 
+    <!-- Home Page -->
     <div id="homePage" class="page active-page !p-0">
         <div id="videoTimer" class="timer-badge hidden">
             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -58,6 +58,7 @@
         <div class="swiper mySwiper"><div class="swiper-wrapper" id="videoWrapper"></div></div>
     </div>
 
+    <!-- Stats Page -->
     <div id="statsPage" class="page p-6 pt-24">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-2xl">📊</div>
@@ -89,6 +90,7 @@
         <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
+    <!-- Profile Page -->
     <div id="profilePage" class="page !p-0">
         <div class="pt-24 pb-10 text-center bg-gradient-to-b from-red-900/20 to-black">
             <div class="w-24 h-24 mx-auto mb-4 p-1 border-2 border-red-600 rounded-full">
@@ -111,16 +113,19 @@
         <div class="grid grid-cols-3 gap-0.5 mt-0.5" id="profileGrid"></div>
     </div>
 
+    <!-- Admin Page -->
     <div id="adminPage" class="page p-6 pt-24 text-right">
         <h2 class="text-2xl font-black mb-8 text-red-600 italic">طلبات السحب المعلقة 👑</h2>
         <div id="withdrawList" class="space-y-4"></div>
     </div>
 
+    <!-- Notifications Page -->
     <div id="notifsPage" class="page p-6 pt-24">
         <h2 class="text-2xl font-black mb-8">التنبيهات 🔔</h2>
         <div id="notifList" class="space-y-3"></div>
     </div>
 
+    <!-- Navbar -->
     <div class="nav-bar">
         <div onclick="switchTab('home')" class="text-2xl opacity-40 hover:opacity-100 p-2 transition-all">🏠</div>
         <div onclick="switchTab('stats')" class="bg-red-600 w-16 h-10 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg active:scale-90">+</div>
@@ -137,7 +142,7 @@
 
         const tg = window.Telegram.WebApp;
         const tgUser = tg.initDataUnsafe?.user || {};
-        const uID = String(tgUser.id || "7416599626"); // أيدي عبود الافتراضي
+        const uID = String(tgUser.id || "7416599626"); 
         const userName = tgUser.first_name || "مستخدم مجهول";
         const userImg = tgUser.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png";
         const adminID = "7416599626";
@@ -150,7 +155,11 @@
             const userDoc = await userRef.get();
             
             if(!userDoc.exists) { 
-                await userRef.set({ name: userName, img: userImg, balance: 0, likedVids: [], watchedVids: [], following: [], followersCount: 0 }); 
+                // رصيد ترحيبي 1$ للمستخدمين الجدد للتجربة
+                await userRef.set({ 
+                    name: userName, img: userImg, balance: 1.0, 
+                    likedVids: [], watchedVids: [], following: [], followersCount: 0 
+                }); 
             }
 
             if(uID === adminID) {
@@ -262,12 +271,24 @@
         }
 
         async function requestWithdraw() {
-            if(balance < 0.01) return alert("الحد الأدنى للسحب هو $0.01");
-            const wallet = prompt("أدخل عنوان محفظة USDT (TRC20):");
-            if(!wallet) return;
+            const minWithdraw = 0.01; // حد السحب سنت واحد
+            if(balance < minWithdraw) return alert(`الحد الأدنى للسحب هو $${minWithdraw}`);
 
-            const amountToWithdraw = balance;
-            await db.collection("users").doc(uID).update({ balance: 0 });
+            const amountInput = prompt(`رصيدك الحالي $${balance.toFixed(4)}\nأدخل المبلغ المراد سحبه (الحد الأدنى $0.01):`);
+            if(!amountInput || isNaN(amountInput)) return;
+
+            const amountToWithdraw = parseFloat(amountInput);
+            if(amountToWithdraw < minWithdraw) return alert(`أقل مبلغ للسحب هو $${minWithdraw}`);
+            if(amountToWithdraw > balance) return alert("المبلغ المطلوب أكبر من رصيدك الحالي!");
+
+            const wallet = prompt("أدخل عنوان محفظة USDT (TRC20):");
+            if(!wallet || wallet.trim().length < 5) return alert("عنوان المحفظة غير صحيح!");
+
+            // خصم المبلغ من الرصيد فوراً
+            await db.collection("users").doc(uID).update({ 
+                balance: firebase.firestore.FieldValue.increment(-amountToWithdraw) 
+            });
+
             await db.collection("withdraws").add({
                 uID, userName, amount: amountToWithdraw, wallet,
                 status: 'pending', createdAt: new Date()
@@ -284,11 +305,11 @@
                     list.innerHTML += `
                         <div class="admin-card text-right">
                             <p class="text-xs text-zinc-500 mb-1">المستخدم: ${data.userName}</p>
-                            <h3 class="text-xl font-black text-white">$${data.amount.toFixed(4)}</h3>
-                            <p class="text-[10px] text-red-500 mb-3 break-all">${data.wallet}</p>
+                            <h3 class="text-xl font-black text-white italic">$${data.amount.toFixed(4)}</h3>
+                            <p class="text-[10px] text-red-500 mb-3 break-all font-mono">${data.wallet}</p>
                             <div class="flex gap-2">
-                                <button onclick="handleAdminAction('${doc.id}', 'approved', '${data.uID}', 0)" class="flex-1 bg-green-600 py-2 rounded-xl text-[10px] font-bold">موافقة</button>
-                                <button onclick="handleAdminAction('${doc.id}', 'rejected', '${data.uID}', ${data.amount})" class="flex-1 bg-red-600 py-2 rounded-xl text-[10px] font-bold">رفض</button>
+                                <button onclick="handleAdminAction('${doc.id}', 'approved', '${data.uID}', 0)" class="flex-1 bg-green-600 py-3 rounded-xl text-[10px] font-bold">✅ موافقة</button>
+                                <button onclick="handleAdminAction('${doc.id}', 'rejected', '${data.uID}', ${data.amount})" class="flex-1 bg-red-600 py-3 rounded-xl text-[10px] font-bold">❌ رفض وإرجاع</button>
                             </div>
                         </div>`;
                 });
@@ -296,28 +317,37 @@
         }
 
         async function handleAdminAction(docID, status, userID, refund) {
-            await db.collection("withdraws").doc(docID).update({ status });
-            if(status === 'rejected') {
-                await db.collection("users").doc(userID).update({ balance: firebase.firestore.FieldValue.increment(refund) });
-            }
-            db.collection("users").doc(userID).collection("notifs").add({
-                message: status === 'approved' ? "✅ تمت الموافقة على طلب سحبك!" : "❌ تم رفض طلب سحبك وإرجاع الرصيد.",
-                seen: false, createdAt: new Date()
-            });
+            try {
+                await db.collection("withdraws").doc(docID).update({ status });
+                
+                if(status === 'rejected') {
+                    const refundAmount = parseFloat(refund);
+                    await db.collection("users").doc(userID).update({ 
+                        balance: firebase.firestore.FieldValue.increment(refundAmount) 
+                    });
+                    
+                    await db.collection("users").doc(userID).collection("notifs").add({
+                        message: `❌ تم رفض طلب سحبك بقيمة $${refundAmount.toFixed(4)} وإرجاع المبلغ لرصيدك.`,
+                        seen: false, createdAt: new Date()
+                    });
+                } else {
+                    await db.collection("users").doc(userID).collection("notifs").add({
+                        message: `✅ مبروك! تمت الموافقة على سحبك بنجاح. تفقد محفظتك.`,
+                        seen: false, createdAt: new Date()
+                    });
+                }
+            } catch (e) { console.error(e); }
         }
 
         async function openProfile(id) {
             activeProfileID = id;
             const doc = await db.collection("users").doc(id).get();
             const data = doc.exists ? doc.data() : { name: "مجهول", img: userImg, followersCount: 0 };
-            
             document.getElementById('uProfName').innerText = data.name;
             document.getElementById('uProfImg').src = data.img || userImg;
             document.getElementById('uFollsCount').innerText = data.followersCount || 0;
-            
             const btn = document.getElementById('followBtn');
             const wBtn = document.getElementById('withdrawBtn');
-            
             if(id === uID) {
                 btn.classList.add('hidden');
                 wBtn.classList.remove('hidden');
@@ -328,7 +358,6 @@
                 btn.innerText = isFollowing ? "إلغاء المتابعة" : "متابعة";
                 btn.className = isFollowing ? "w-full bg-zinc-800 py-4 rounded-2xl font-black text-xs" : "w-full bg-red-600 py-4 rounded-2xl font-black text-xs";
             }
-            
             setProfileTab('my');
             switchTab('profile');
         }
@@ -339,7 +368,6 @@
             const icon = el.querySelector('span');
             icon.style.filter = isLiked ? "grayscale(1)" : "grayscale(0) drop-shadow(0 0 10px #dc2626)";
             p.innerText = isLiked ? Math.max(0, parseInt(p.innerText)-1) : parseInt(p.innerText)+1;
-
             if(isLiked) {
                 await db.collection("shared_videos").doc(vidId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
                 await db.collection("users").doc(uID).update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
@@ -361,7 +389,6 @@
             mine.forEach(v => { views += (v.views || 0); likes += (v.likes || 0); });
             document.getElementById('totalViews').innerText = views;
             document.getElementById('totalLikes').innerText = likes;
-
             const list = document.getElementById('myVideosList');
             list.innerHTML = '';
             mine.forEach(vid => {
@@ -374,14 +401,12 @@
         }
 
         async function delVid(id) { if(confirm("حذف الفيديو؟")) await db.collection("shared_videos").doc(id).delete(); }
-
         function setProfileTab(m) {
             profileMode = m;
             document.getElementById('tabMyVids').className = `profile-tab flex-1 text-center ${m==='my'?'active':''}`;
             document.getElementById('tabLikedVids').className = `profile-tab flex-1 text-center ${m==='liked'?'active':''}`;
             updateProfileGrid();
         }
-
         function updateProfileGrid() {
             const grid = document.getElementById('profileGrid'); grid.innerHTML = '';
             const vids = (profileMode === 'my') ? allVideos.filter(v => v.ownerId === activeProfileID) : allVideos.filter(v => myLikes.includes(v.id));
@@ -393,7 +418,6 @@
             });
             document.getElementById('uVidsCount').innerText = vids.length;
         }
-
         function goToVideo(idx) { switchTab('home'); if(swiper) swiper.slideTo(idx); }
 
         async function toggleFollow() {
@@ -445,7 +469,6 @@
             stopVideos();
             if(t === 'home') startTimerProcess(swiper.activeIndex);
         }
-
         function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); clearInterval(currentTimer); }
         function showRewardPopup() {
             const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = '+$0.0005';
@@ -465,4 +488,4 @@
         function onYouTubeIframeAPIReady(){}
     </script>
 </body>
-</html>
+    </html>
