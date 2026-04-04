@@ -27,6 +27,7 @@
         iframe { width: 100%; height: 100%; pointer-events: none; }
         .admin-card { background: #111; border: 1px solid #222; border-radius: 20px; padding: 15px; margin-bottom: 10px; }
         .task-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; padding: 15px; border-radius: 20px; display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
+        .liked-active { color: #dc2626 !important; filter: grayscale(0) !important; transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -89,7 +90,6 @@
                 <button onclick="handlePublish()" class="bg-red-600 px-6 rounded-2xl font-black text-sm">نشر</button>
             </div>
         </div>
-        <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
     <!-- Profile Page -->
@@ -127,30 +127,18 @@
     <!-- Admin Page -->
     <div id="adminPage" class="page p-6 pt-24 text-right">
         <h2 class="text-3xl font-black mb-8 text-red-600 italic">لوحة التحكم الملكية 👑</h2>
-        
-        <div class="bg-zinc-900/40 p-6 rounded-3xl border border-red-600/20 mb-10">
+        <div class="bg-zinc-900/40 p-6 rounded-3xl border border-red-600/20 mb-10 text-right">
             <h3 class="text-lg font-black mb-4">✨ إضافة مهمة جديدة</h3>
             <div class="space-y-3">
                 <input id="taskTitle" type="text" placeholder="اسم المهمة" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs">
                 <input id="taskLink" type="text" placeholder="الرابط" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs">
-                <input id="taskReward" type="number" placeholder="المكافأة $" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs">
+                <input id="taskReward" type="number" step="0.0001" placeholder="المكافأة $" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs">
                 <button onclick="addNewTask()" class="w-full bg-red-600 py-4 rounded-2xl font-black text-sm mt-2">نشر المهمة</button>
             </div>
         </div>
-
-        <div class="mb-10">
+        <div class="mb-10 text-right">
             <h3 class="text-lg font-black mb-4">📋 المهام الحالية</h3>
             <div id="adminTasksList" class="space-y-3"></div>
-        </div>
-
-        <div class="mb-10">
-            <h3 class="text-lg font-black mb-4">👥 إدارة المستخدمين</h3>
-            <div id="usersList" class="space-y-3"></div>
-        </div>
-
-        <div class="mb-10">
-            <h3 class="text-lg font-black mb-4">💰 طلبات السحب</h3>
-            <div id="withdrawList" class="space-y-4"></div>
         </div>
     </div>
 
@@ -190,11 +178,6 @@
                 await userRef.set({ name: userName, img: userImg, balance: 1.0, likedVids: [], watchedVids: [], following: [], completedTasks: [], followersCount: 0 }); 
             }
 
-            if(uID === adminID) { 
-                document.getElementById('adminBtn').classList.remove('hidden'); 
-                loadWithdrawsForAdmin(); loadUsersForAdmin(); loadTasksForAdmin();
-            }
-
             userRef.onSnapshot(d => {
                 if(d.exists) {
                     const data = d.data();
@@ -204,22 +187,49 @@
                     watchedVids = data.watchedVids || [];
                     myFollowing = data.following || [];
                     completedTasks = data.completedTasks || [];
+                    if (activeProfileID) updateProfileGrid();
                 }
             });
 
-            db.collection("users").doc(uID).collection("notifs").where("seen", "==", false).onSnapshot(snap => {
-                const badge = document.getElementById('notifBadge');
-                if(snap.size > 0) { badge.innerText = snap.size; badge.classList.remove('hidden'); }
-                else { badge.classList.add('hidden'); }
-            });
+            if(uID === adminID) { 
+                document.getElementById('adminBtn').classList.remove('hidden'); 
+                loadTasksForAdmin();
+            }
 
             db.collection("shared_videos").orderBy("createdAt", "desc").onSnapshot(snap => {
                 allVideos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                renderHome(); updateStats(); renderChart();
-                if(activeProfileID) updateProfileGrid();
+                renderHome();
+                updateStats();
+                renderChart();
+                if (activeProfileID) updateProfileGrid();
             });
 
-            loadTasksForUser(); loadNotifs();
+            loadTasksForUser();
+            loadNotifs();
+        }
+
+        // --- وظيفة الإعجاب ---
+        async function handleLike(vidId) {
+            const isLiked = myLikes.includes(vidId);
+            const userRef = db.collection("users").doc(uID);
+            const vidRef = db.collection("shared_videos").doc(vidId);
+
+            if (isLiked) {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+            } else {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidId) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+                // Notify owner
+                const vid = allVideos.find(v => v.id === vidId);
+                if (vid && vid.ownerId !== uID) {
+                    db.collection("users").doc(vid.ownerId).collection("notifs").add({
+                        message: `❤️ قام ${userName} بالإعجاب بفيديو لك`,
+                        seen: false,
+                        createdAt: new Date()
+                    });
+                }
+            }
         }
 
         // --- الملف الشخصي ---
@@ -257,10 +267,16 @@
 
         function updateProfileGrid() {
             const grid = document.getElementById('profileGrid');
+            if (!grid) return;
             grid.innerHTML = '';
-            const filtered = (profileMode === 'my') 
-                ? allVideos.filter(v => v.ownerId === activeProfileID) 
-                : allVideos.filter(v => myLikes.includes(v.id));
+            
+            let filtered = [];
+            if (profileMode === 'my') {
+                filtered = allVideos.filter(v => v.ownerId === activeProfileID);
+            } else {
+                // If viewing self, show myLikes. If viewing others, show their likes (simplified to self likes for now)
+                filtered = allVideos.filter(v => myLikes.includes(v.id));
+            }
             
             document.getElementById('uVidsCount').innerText = filtered.length;
             
@@ -272,124 +288,21 @@
             });
         }
 
-        // --- المهام ---
-        async function addNewTask() {
-            const title = document.getElementById('taskTitle').value;
-            const link = document.getElementById('taskLink').value;
-            const reward = parseFloat(document.getElementById('taskReward').value);
-            if(!title || !link || isNaN(reward)) return;
-            await db.collection("tasks").add({ title, link, reward, createdAt: new Date() });
-            alert("تمت الإضافة!");
-        }
-
-        function loadTasksForAdmin() {
-            db.collection("tasks").onSnapshot(snap => {
-                const list = document.getElementById('adminTasksList');
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    list.innerHTML += `
-                        <div class="admin-card flex justify-between items-center">
-                            <div><p class="text-sm font-bold">${t.title}</p><p class="text-xs text-red-500">$${t.reward}</p></div>
-                            <button onclick="deleteTask('${doc.id}')" class="text-red-500 text-xs">حذف</button>
-                        </div>`;
-                });
-            });
-        }
-
-        async function deleteTask(id) { if(confirm("حذف؟")) await db.collection("tasks").doc(id).delete(); }
-
-        function loadTasksForUser() {
-            db.collection("tasks").onSnapshot(snap => {
-                const list = document.getElementById('userTasksList');
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    const done = completedTasks.includes(doc.id);
-                    list.innerHTML += `
-                        <div class="task-card ${done ? 'opacity-40' : ''}">
-                            <div class="flex-1">
-                                <p class="text-sm font-bold">${t.title}</p>
-                                <p class="text-[10px] text-green-500 font-bold">+$${t.reward}</p>
-                            </div>
-                            <button onclick="${done ? '' : `doTask('${doc.id}', '${t.link}', ${t.reward})`}" class="bg-red-600 px-4 py-2 rounded-xl text-xs font-bold">${done ? 'مكتمل' : 'تنفيذ'}</button>
-                        </div>`;
-                });
-            });
-        }
-
-        async function doTask(id, link, reward) {
-            window.open(link, '_blank');
-            if(confirm("هل أتممت المهمة؟")) {
-                await db.collection("users").doc(uID).update({ 
-                    balance: firebase.firestore.FieldValue.increment(reward),
-                    completedTasks: firebase.firestore.FieldValue.arrayUnion(id)
-                });
-                showRewardPopup(reward);
-            }
-        }
-
-        // --- وظائف الأدمن ---
-        function loadUsersForAdmin() {
-            db.collection("users").onSnapshot(snap => {
-                const list = document.getElementById('usersList');
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const u = doc.data();
-                    if(doc.id === adminID) return;
-                    list.innerHTML += `
-                        <div class="admin-card">
-                            <p class="text-xs font-bold">${u.name} ($${u.balance.toFixed(4)})</p>
-                            <div class="flex gap-2 mt-2">
-                                <button onclick="updateUserBal('${doc.id}', 0.1)" class="bg-green-600/20 text-green-500 p-1 rounded flex-1 text-[10px]">+0.1</button>
-                                <button onclick="updateUserBal('${doc.id}', -0.1)" class="bg-red-600/20 text-red-500 p-1 rounded flex-1 text-[10px]">-0.1</button>
-                                <button onclick="handleBan('${doc.id}')" class="bg-zinc-800 p-1 rounded flex-1 text-[10px]">حظر</button>
-                            </div>
-                        </div>`;
-                });
-            });
-        }
-
-        async function updateUserBal(id, amount) { await db.collection("users").doc(id).update({ balance: firebase.firestore.FieldValue.increment(amount) }); }
-
-        function loadWithdrawsForAdmin() {
-            db.collection("withdraws").where("status", "==", "pending").onSnapshot(snap => {
-                const list = document.getElementById('withdrawList');
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    list.innerHTML += `
-                        <div class="admin-card">
-                            <p class="text-xs font-bold">${d.userName} - $${d.amount}</p>
-                            <p class="text-[10px] text-zinc-500">${d.wallet}</p>
-                            <div class="flex gap-2 mt-2">
-                                <button onclick="adminAction('${doc.id}', 'approved', '${d.uID}', 0)" class="bg-green-600 p-2 rounded flex-1 text-xs font-bold">قبول</button>
-                                <button onclick="adminAction('${doc.id}', 'rejected', '${d.uID}', ${d.amount})" class="bg-red-600 p-2 rounded flex-1 text-xs font-bold">رفض</button>
-                            </div>
-                        </div>`;
-                });
-            });
-        }
-
-        async function adminAction(docID, status, u, refund) {
-            await db.collection("withdraws").doc(docID).update({ status });
-            if(status === 'rejected') await db.collection("users").doc(u).update({ balance: firebase.firestore.FieldValue.increment(refund) });
-            await db.collection("users").doc(u).collection("notifs").add({ message: status === 'approved' ? '✅ تم قبول طلب سحبك' : '❌ تم رفض طلب سحبك', seen: false, createdAt: new Date() });
-        }
-
-        // --- الصفحة الرئيسية والفيديوهات ---
+        // --- الصفحة الرئيسية ---
         function renderHome() {
             const wrap = document.getElementById('videoWrapper');
+            if (!wrap) return;
             const currentIdx = swiper ? swiper.activeIndex : 0;
             wrap.innerHTML = '';
             allVideos.forEach((v, i) => {
+                const isLiked = myLikes.includes(v.id);
                 wrap.innerHTML += `
                     <div class="swiper-slide relative bg-black">
                         <div class="yt-frame-container"><div id="player-${i}"></div></div>
                         <div class="absolute right-5 bottom-36 flex flex-col items-center gap-7 pointer-events-auto z-50">
                             <img src="${v.ownerImg || userImg}" class="w-14 h-14 rounded-full border-2 border-red-600 object-cover shadow-xl" onclick="openProfile('${v.ownerId}')">
                             <div onclick="handleLike('${v.id}')" class="text-center cursor-pointer">
-                                <span class="text-3xl" style="filter: ${myLikes.includes(v.id) ? 'grayscale(0)' : 'grayscale(1)'}">❤️</span>
+                                <span class="text-3xl transition-all ${isLiked ? 'liked-active' : 'opacity-40'}" style="display:block">❤️</span>
                                 <p class="text-xs font-black">${v.likes || 0}</p>
                             </div>
                         </div>
@@ -399,17 +312,26 @@
                     </div>`;
             });
             if(swiper) swiper.destroy();
-            swiper = new Swiper(".mySwiper", { direction: "vertical", initialSlide: currentIdx, on: { slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } } });
+            swiper = new Swiper(".mySwiper", { 
+                direction: "vertical", 
+                initialSlide: currentIdx, 
+                on: { 
+                    slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } 
+                } 
+            });
             setTimeout(initPlayers, 500);
             startTimerProcess(currentIdx);
         }
 
         function initPlayers() {
             allVideos.forEach((v, i) => {
-                players[i] = new YT.Player(`player-${i}`, {
-                    videoId: v.videoId, playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
-                    events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startCountdown(i); } }
-                });
+                if (document.getElementById(`player-${i}`)) {
+                    players[i] = new YT.Player(`player-${i}`, {
+                        videoId: v.videoId, 
+                        playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
+                        events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startCountdown(i); } }
+                    });
+                }
             });
         }
 
@@ -421,62 +343,127 @@
             badge.classList.remove('hidden');
             let sec = 10;
             currentTimer = setInterval(async () => {
-                sec--; document.getElementById('timerText').innerText = sec + "s";
+                sec--; 
+                document.getElementById('timerText').innerText = sec + "s";
                 if(sec <= 0) {
-                    clearInterval(currentTimer); badge.classList.add('hidden');
+                    clearInterval(currentTimer); 
+                    badge.classList.add('hidden');
                     showRewardPopup(0.0005);
                     await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(0.0005), watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id) });
+                    await db.collection("shared_video_stats").doc(v.id).set({ views: firebase.firestore.FieldValue.increment(1) }, {merge:true});
                     await db.collection("shared_videos").doc(v.id).update({ views: firebase.firestore.FieldValue.increment(1) });
                 }
             }, 1000);
         }
 
-        // --- وظائف مساعدة ---
+        // --- المهام (أدمن ومستخدم) ---
+        async function addNewTask() {
+            const title = document.getElementById('taskTitle').value;
+            const link = document.getElementById('taskLink').value;
+            const reward = parseFloat(document.getElementById('taskReward').value);
+            if(!title || !link || isNaN(reward)) return;
+            await db.collection("tasks").add({ title, link, reward, createdAt: new Date() });
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskLink').value = '';
+            document.getElementById('taskReward').value = '';
+            alert("تمت إضافة المهمة بنجاح!");
+        }
+
+        function loadTasksForAdmin() {
+            db.collection("tasks").onSnapshot(snap => {
+                const list = document.getElementById('adminTasksList');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    list.innerHTML += `
+                        <div class="admin-card flex justify-between items-center text-right">
+                            <button onclick="deleteTask('${doc.id}')" class="text-red-500 text-xs font-bold">حذف</button>
+                            <div class="text-right"><p class="text-sm font-bold">${t.title}</p><p class="text-xs text-red-500">$${t.reward}</p></div>
+                        </div>`;
+                });
+            });
+        }
+
+        async function deleteTask(id) { if(confirm("حذف هذه المهمة؟")) await db.collection("tasks").doc(id).delete(); }
+
+        function loadTasksForUser() {
+            db.collection("tasks").onSnapshot(snap => {
+                const list = document.getElementById('userTasksList');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    const done = completedTasks.includes(doc.id);
+                    list.innerHTML += `
+                        <div class="task-card ${done ? 'opacity-40' : ''}">
+                            <div class="flex-1 text-right">
+                                <p class="text-sm font-bold">${t.title}</p>
+                                <p class="text-[10px] text-green-500 font-bold">+$${t.reward}</p>
+                            </div>
+                            <button onclick="${done ? '' : `doTask('${doc.id}', '${t.link}', ${t.reward})`}" class="bg-red-600 px-4 py-2 rounded-xl text-xs font-bold">${done ? 'مكتمل' : 'تنفيذ'}</button>
+                        </div>`;
+                });
+            });
+        }
+
+        async function doTask(id, link, reward) {
+            window.open(link, '_blank');
+            setTimeout(() => {
+                if(confirm("هل أتممت المهمة فعلاً؟")) {
+                    db.collection("users").doc(uID).update({ 
+                        balance: firebase.firestore.FieldValue.increment(reward),
+                        completedTasks: firebase.firestore.FieldValue.arrayUnion(id)
+                    });
+                    showRewardPopup(reward);
+                }
+            }, 2000);
+        }
+
+        // --- تنقل ووظائف عامة ---
         async function switchTab(t) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
             if(t === 'profile_self') { openProfile(uID); return; }
-            document.getElementById(t + 'Page').classList.add('active-page');
+            const target = document.getElementById(t + 'Page');
+            if(target) target.classList.add('active-page');
             stopVideos();
-            if(t === 'home') startTimerProcess(swiper.activeIndex);
+            if(t === 'home' && swiper) startTimerProcess(swiper.activeIndex);
         }
 
         function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); clearInterval(currentTimer); }
         function startTimerProcess(idx) { if(players[idx]?.playVideo) players[idx].playVideo(); }
         function showRewardPopup(v) { const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = `+$${v.toFixed(4)}`; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
         
-        async function requestWithdraw() {
-            if(balance < 0.01) return alert("الحد الأدنى $0.01");
-            const w = prompt("محفظة USDT TRC20:");
-            if(!w) return;
-            await db.collection("withdraws").add({ uID, userName, amount: balance, wallet: w, status: 'pending', createdAt: new Date() });
-            await db.collection("users").doc(uID).update({ balance: 0 });
-            alert("تم الطلب!");
-        }
-
         async function handlePublish() {
             const val = document.getElementById('ytInput').value;
             const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1];
             if(vidId) { 
                 await db.collection("shared_videos").add({ videoId: vidId, ownerId: uID, ownerName: userName, ownerImg: userImg, views: 0, likes: 0, createdAt: new Date() });
                 document.getElementById('ytInput').value = '';
+                alert("تم النشر!");
             }
         }
 
         function loadNotifs() {
             db.collection("users").doc(uID).collection("notifs").orderBy("createdAt", "desc").onSnapshot(snap => {
-                const list = document.getElementById('notifList'); list.innerHTML = '';
-                snap.forEach(doc => { list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs">${doc.data().message}</div>`; });
+                const list = document.getElementById('notifList'); if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => { list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs text-right">${doc.data().message}</div>`; });
             });
         }
 
         function updateStats() {
             const mine = allVideos.filter(v => v.ownerId === uID);
-            let views = 0, likes = 0; mine.forEach(v => { views += v.views; likes += v.likes; });
-            document.getElementById('totalViews').innerText = views; document.getElementById('totalLikes').innerText = likes;
+            let views = 0, likes = 0; mine.forEach(v => { views += (v.views || 0); likes += (v.likes || 0); });
+            const vEl = document.getElementById('totalViews');
+            const lEl = document.getElementById('totalLikes');
+            if(vEl) vEl.innerText = views; if(lEl) lEl.innerText = likes;
         }
 
         function renderChart() {
-            const ctx = document.getElementById('tradingChart').getContext('2d');
+            const canvas = document.getElementById('tradingChart');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
             if(window.myChart) window.myChart.destroy();
             window.myChart = new Chart(ctx, { type: 'line', data: { labels: ['1','2','3','4','5'], datasets: [{ data:[10,35,20,60,45], borderColor:'#dc2626', tension:0.4, pointRadius:0 }] }, options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} } });
         }
