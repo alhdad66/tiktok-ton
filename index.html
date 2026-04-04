@@ -33,14 +33,12 @@
 </head>
 <body>
 
-    <!-- الشاشة المحظورة -->
     <div id="bannedScreen" class="banned-screen hidden">
         <h1 class="text-6xl mb-4">🚫</h1>
         <h2 class="text-3xl font-black text-red-600 mb-2">لقد تم حظرك!</h2>
         <p class="text-zinc-500 font-bold">حسابك منتهك لقوانين المنصة ولا يمكنك الدخول.</p>
     </div>
 
-    <!-- Balance Header -->
     <div class="fixed top-8 left-6 right-6 z-[11000] flex justify-between items-center pointer-events-none">
         <div class="bg-zinc-900/95 px-5 py-2.5 rounded-full border border-white/5 pointer-events-auto flex items-center gap-3 shadow-xl">
             <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
@@ -53,7 +51,6 @@
         </div>
     </div>
 
-    <!-- Home Page -->
     <div id="homePage" class="page active-page !p-0">
         <div id="videoTimer" class="timer-badge hidden">
             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -62,14 +59,12 @@
         <div class="swiper mySwiper"><div class="swiper-wrapper" id="videoWrapper"></div></div>
     </div>
 
-    <!-- Tasks Page -->
     <div id="tasksPage" class="page p-6 pt-24">
         <h2 class="text-3xl font-black mb-2 italic">المهام المتاحة 📋</h2>
         <p class="text-zinc-500 text-xs mb-8 font-bold text-right">نفذ المهام لزيادة أرباحك فوراً</p>
         <div id="userTasksList" class="space-y-3 pb-10"></div>
     </div>
 
-    <!-- Stats Page (Publisher) -->
     <div id="statsPage" class="page p-6 pt-24 text-right">
         <div class="flex items-center gap-3 mb-8 justify-end">
             <div>
@@ -102,7 +97,6 @@
         <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
-    <!-- Profile Page -->
     <div id="profilePage" class="page !p-0">
         <div class="pt-24 pb-10 text-center bg-gradient-to-b from-red-900/20 to-black">
             <div class="w-24 h-24 mx-auto mb-4 p-1 border-2 border-red-600 rounded-full bg-zinc-900 overflow-hidden">
@@ -125,19 +119,14 @@
         <div class="grid grid-cols-3 gap-0.5 mt-0.5 pb-20" id="profileGrid"></div>
     </div>
 
-    <!-- Admin Page -->
     <div id="adminPage" class="page p-6 pt-24 text-right">
         <h2 class="text-3xl font-black mb-8 text-red-600 italic">لوحة التحكم الملكية 👑</h2>
-        
-        <!-- قسم المستخدمين -->
-        <div class="mb-10">
-            <h3 class="text-xl font-black mb-4 flex items-center gap-2 justify-end">👥 إدارة المستخدمين <span id="usersCount" class="bg-red-600 text-[10px] px-2 py-0.5 rounded-full">0</span></h3>
-            <div id="adminUsersList" class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                <!-- User Item Example -->
-            </div>
+
+        <div class="mb-10 text-right">
+            <h3 class="text-lg font-black mb-4">💸 طلبات السحب</h3>
+            <div id="adminWithdrawalsList" class="space-y-3"></div>
         </div>
 
-        <!-- إضافة مهمة -->
         <div class="bg-zinc-900/40 p-6 rounded-3xl border border-red-600/20 mb-10 text-right">
             <h3 class="text-lg font-black mb-4">✨ إضافة مهمة جديدة</h3>
             <div class="space-y-3">
@@ -148,20 +137,17 @@
             </div>
         </div>
 
-        <!-- طلبات السحب -->
-        <div class="mb-10 text-right">
-            <h3 class="text-lg font-black mb-4">💸 طلبات السحب</h3>
-            <div id="adminWithdrawalsList" class="space-y-3"></div>
-        </div>
-
-        <!-- إدارة المهام -->
         <div class="mb-10 text-right">
             <h3 class="text-lg font-black mb-4 text-zinc-500">📋 المهام النشطة</h3>
             <div id="adminTasksList" class="space-y-3"></div>
         </div>
+
+        <div class="mb-10">
+            <h3 class="text-xl font-black mb-4 flex items-center gap-2 justify-end">👥 إدارة المستخدمين <span id="usersCount" class="bg-red-600 text-[10px] px-2 py-0.5 rounded-full">0</span></h3>
+            <div id="adminUsersList" class="space-y-4 max-h-[400px] overflow-y-auto pr-2"></div>
+        </div>
     </div>
 
-    <!-- Notifications Page -->
     <div id="notifsPage" class="page p-6 pt-24">
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-black">التنبيهات 🔔</h2>
@@ -170,7 +156,6 @@
         <div id="notifList" class="space-y-3"></div>
     </div>
 
-    <!-- Navbar -->
     <div class="nav-bar">
         <div onclick="switchTab('home')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">🏠</div>
         <div onclick="switchTab('tasks')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">📋</div>
@@ -181,7 +166,6 @@
         <div onclick="switchTab('profile_self')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">👤</div>
     </div>
 
-    <!-- Modal for Withdrawal -->
     <div id="withdrawModal" class="fixed inset-0 bg-black/95 z-[30000] hidden flex items-center justify-center p-6 backdrop-blur-md">
         <div class="bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 text-right">
             <h3 class="text-xl font-black mb-2">طلب سحب 💰</h3>
@@ -216,14 +200,13 @@
             const userRef = db.collection("users").doc(uID);
             const userDoc = await userRef.get();
             
-            // تحقق الحظر
             if(userDoc.exists && userDoc.data().isBanned) {
                 document.getElementById('bannedScreen').classList.remove('hidden');
                 return;
             }
 
             if(!userDoc.exists) { 
-                await userRef.set({ name: userName, img: userImg, balance: 0.0, likedVids: [], watchedVids: [], following: [], completedTasks: [], followersCount: 0, isBanned: false, createdAt: new Date() }); 
+                await userRef.set({ name: userName, img: userImg, balance: 0.0, likedVids: [], watchedVids: [], following: [], completedTasks: [], followersCount: 0, isBanned: false, createdAt: new Date() });
             }
 
             userRef.onSnapshot(d => {
@@ -242,7 +225,7 @@
             });
 
             if(uID === adminID) { 
-                document.getElementById('adminBtn').classList.remove('hidden'); 
+                document.getElementById('adminBtn').classList.remove('hidden');
                 loadTasksForAdmin();
                 loadWithdrawalsForAdmin();
                 loadUsersForAdmin();
@@ -258,10 +241,10 @@
             });
 
             loadTasksForUser();
-            loadNotifs();
+            // إصلاح: استدعاء التنبيهات عند بدء التشغيل
+            loadNotifs(); 
         }
 
-        // --- لوحة التحكم: إدارة المستخدمين ---
         function loadUsersForAdmin() {
             db.collection("users").onSnapshot(snap => {
                 const list = document.getElementById('adminUsersList');
@@ -293,14 +276,13 @@
                                 </button>
                                 <button onclick="openProfile('${id}')" class="bg-zinc-800 px-4 rounded-xl text-[10px] font-black">عرض</button>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
             });
         }
 
         async function updateUserBal(id, amount) {
-            const val = parseFloat(prompt("أدخل القيمة المراد إضافتها أو خصمها (مثلاً 0.5):", "0.1"));
+            const val = parseFloat(prompt("أدخل القيمة المراد إضافتها أو خصمها:", "0.1"));
             if(isNaN(val)) return;
             const final = amount > 0 ? val : -val;
             await db.collection("users").doc(id).update({ balance: firebase.firestore.FieldValue.increment(final) });
@@ -314,7 +296,6 @@
             }
         }
 
-        // --- نظام المتابعة والملف الشخصي ---
         async function toggleFollow() {
             if(!activeProfileID || activeProfileID === uID) return;
             const isFollowing = myFollowing.includes(activeProfileID);
@@ -376,7 +357,6 @@
 
         function jumpToVideo(idx) { if(idx === -1) return; switchTab('home'); setTimeout(() => { swiper.slideTo(idx, 300); }, 100); }
 
-        // --- السحب ---
         function openWithdrawModal() { document.getElementById('withdrawModal').classList.remove('hidden'); }
         function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
         async function submitWithdraw() {
@@ -387,7 +367,6 @@
             alert("تم إرسال طلب السحب بنجاح!"); closeWithdrawModal();
         }
 
-        // --- بقية الوظائف الأساسية ---
         function renderHome() {
             const wrap = document.getElementById('videoWrapper');
             if (!wrap) return;
@@ -517,6 +496,7 @@
                 const list = document.getElementById('notifList'); if(!list) return; list.innerHTML = '';
                 const badge = document.getElementById('notifBadge');
                 if(snap.size > 0) { badge.innerText = snap.size; badge.classList.remove('hidden'); }
+                else { badge.classList.add('hidden'); }
                 snap.forEach(doc => { list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs text-right font-black shadow-sm">${doc.data().message}</div>`; });
             });
         }
@@ -531,6 +511,7 @@
         async function switchTab(t) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
             if(t === 'profile_self') { openProfile(uID); return; }
+            if(t === 'profile') { document.getElementById('profilePage').classList.add('active-page'); return; }
             const target = document.getElementById(t + 'Page');
             if(target) target.classList.add('active-page');
             stopVideos();
@@ -549,7 +530,8 @@
         }
 
         function renderMyVideosList() {
-            const list = document.getElementById('myVideosList'); if(!list) return; list.innerHTML = '';
+            const list = document.getElementById('myVideosList');
+            if(!list) return; list.innerHTML = '';
             const mine = allVideos.filter(v => v.ownerId === uID);
             mine.forEach(v => {
                 list.innerHTML += `<div class="bg-zinc-900/60 p-3 rounded-2xl flex items-center gap-4 border border-white/5"><img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-12 rounded-lg object-cover"><div class="flex-1 text-right"><p class="text-[10px] text-zinc-400 font-bold">Views: ${v.views || 0} | Likes: ${v.likes || 0}</p></div><button onclick="deleteVideo('${v.id}')" class="bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-[10px] font-black">حذف</button></div>`;
@@ -559,7 +541,8 @@
         async function deleteVideo(id) { if(confirm("هل تريد حذف الفيديو نهائياً؟")) await db.collection("shared_videos").doc(id).delete(); }
 
         function renderChart() {
-            const canvas = document.getElementById('tradingChart'); if(!canvas) return;
+            const canvas = document.getElementById('tradingChart');
+            if(!canvas) return;
             const ctx = canvas.getContext('2d');
             if(window.myChart) window.myChart.destroy();
             window.myChart = new Chart(ctx, { type: 'line', data: { labels: ['1','2','3','4','5'], datasets: [{ data:[10,35,20,60,45], borderColor:'#dc2626', tension:0.4, pointRadius:0, fill:true, backgroundColor:'rgba(220,38,38,0.1)' }] }, options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} } });
@@ -569,4 +552,4 @@
         function onYouTubeIframeAPIReady(){}
     </script>
 </body>
-    </html>
+</html>
