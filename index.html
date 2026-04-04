@@ -25,9 +25,9 @@
         @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; transform: translate(-50%, -20px); } 100% { opacity:0; transform: translate(-50%, -120px); } }
         .yt-frame-container { position: relative; width: 100%; height: 100%; pointer-events: none; }
         iframe { width: 100%; height: 100%; pointer-events: none; }
+        .liked-active { color: #dc2626 !important; filter: grayscale(0) !important; transform: scale(1.2); }
         .admin-card { background: #111; border: 1px solid #222; border-radius: 20px; padding: 15px; margin-bottom: 10px; }
         .task-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; padding: 15px; border-radius: 20px; display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
-        .liked-active { color: #dc2626 !important; filter: grayscale(0) !important; transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -83,13 +83,15 @@
                 <h4 id="totalLikes" class="text-2xl font-black text-red-500">0</h4>
             </div>
         </div>
-        <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-10">
+        <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-6">
             <p class="text-xs font-black text-red-500 mb-4">انشر فيديو جديد</p>
             <div class="flex gap-2">
                 <input id="ytInput" type="text" placeholder="رابط فيديو يوتيوب..." class="flex-1 bg-black/50 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-red-600">
                 <button onclick="handlePublish()" class="bg-red-600 px-6 rounded-2xl font-black text-sm">نشر</button>
             </div>
         </div>
+        <h3 class="text-lg font-black mb-4">🎥 فيديوهاتي المنشورة</h3>
+        <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
     <!-- Profile Page -->
@@ -188,6 +190,7 @@
                     myFollowing = data.following || [];
                     completedTasks = data.completedTasks || [];
                     if (activeProfileID) updateProfileGrid();
+                    updateFollowBtn();
                 }
             });
 
@@ -201,6 +204,7 @@
                 renderHome();
                 updateStats();
                 renderChart();
+                renderMyVideosList();
                 if (activeProfileID) updateProfileGrid();
             });
 
@@ -208,31 +212,44 @@
             loadNotifs();
         }
 
-        // --- وظيفة الإعجاب ---
-        async function handleLike(vidId) {
-            const isLiked = myLikes.includes(vidId);
+        // --- نظام المتابعة ---
+        async function toggleFollow() {
+            if(!activeProfileID || activeProfileID === uID) return;
+            const isFollowing = myFollowing.includes(activeProfileID);
             const userRef = db.collection("users").doc(uID);
-            const vidRef = db.collection("shared_videos").doc(vidId);
+            const targetRef = db.collection("users").doc(activeProfileID);
 
-            if (isLiked) {
-                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
-                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+            if(isFollowing) {
+                await userRef.update({ following: firebase.firestore.FieldValue.arrayRemove(activeProfileID) });
+                await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(-1) });
             } else {
-                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidId) });
-                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
-                // Notify owner
-                const vid = allVideos.find(v => v.id === vidId);
-                if (vid && vid.ownerId !== uID) {
-                    db.collection("users").doc(vid.ownerId).collection("notifs").add({
-                        message: `❤️ قام ${userName} بالإعجاب بفيديو لك`,
-                        seen: false,
-                        createdAt: new Date()
-                    });
-                }
+                await userRef.update({ following: firebase.firestore.FieldValue.arrayUnion(activeProfileID) });
+                await targetRef.update({ followersCount: firebase.firestore.FieldValue.increment(1) });
+                // Notif
+                db.collection("users").doc(activeProfileID).collection("notifs").add({
+                    message: `👤 قام ${userName} بمتابعتك`,
+                    seen: false,
+                    createdAt: new Date()
+                });
+            }
+            openProfile(activeProfileID); // Refresh
+        }
+
+        function updateFollowBtn() {
+            const btn = document.getElementById('followBtn');
+            if(!btn || !activeProfileID) return;
+            if(activeProfileID === uID) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+                btn.innerText = myFollowing.includes(activeProfileID) ? "إلغاء المتابعة" : "متابعة";
+                btn.className = myFollowing.includes(activeProfileID) 
+                    ? "w-full bg-zinc-800 py-4 rounded-2xl font-black text-xs" 
+                    : "w-full bg-red-600 py-4 rounded-2xl font-black text-xs";
             }
         }
 
-        // --- الملف الشخصي ---
+        // --- الملف الشخصي والشبكة ---
         async function openProfile(id) {
             activeProfileID = id;
             const doc = await db.collection("users").doc(id).get();
@@ -242,17 +259,9 @@
             document.getElementById('uProfImg').src = data.img || "https://i.ibb.co/vz6V0vD/default-user.png";
             document.getElementById('uFollsCount').innerText = data.followersCount || 0;
             
-            const btn = document.getElementById('followBtn');
+            updateFollowBtn();
             const wBtn = document.getElementById('withdrawBtn');
-            
-            if(id === uID) {
-                btn.classList.add('hidden');
-                wBtn.classList.remove('hidden');
-            } else {
-                btn.classList.remove('hidden');
-                wBtn.classList.add('hidden');
-                btn.innerText = myFollowing.includes(id) ? "إلغاء المتابعة" : "متابعة";
-            }
+            if(id === uID) wBtn.classList.remove('hidden'); else wBtn.classList.add('hidden');
             
             setProfileTab('my');
             switchTab('profile');
@@ -270,25 +279,67 @@
             if (!grid) return;
             grid.innerHTML = '';
             
-            let filtered = [];
-            if (profileMode === 'my') {
-                filtered = allVideos.filter(v => v.ownerId === activeProfileID);
-            } else {
-                // If viewing self, show myLikes. If viewing others, show their likes (simplified to self likes for now)
-                filtered = allVideos.filter(v => myLikes.includes(v.id));
-            }
+            let filtered = (profileMode === 'my') 
+                ? allVideos.filter(v => v.ownerId === activeProfileID) 
+                : allVideos.filter(v => (activeProfileID === uID ? myLikes : []).includes(v.id)); // Simplified for privacy
             
             document.getElementById('uVidsCount').innerText = filtered.length;
             
             filtered.forEach(v => {
+                const idxInAll = allVideos.findIndex(vid => vid.id === v.id);
                 grid.innerHTML += `
-                    <div class="aspect-[9/16] bg-zinc-900 border border-white/5 overflow-hidden">
+                    <div onclick="jumpToVideo(${idxInAll})" class="aspect-[9/16] bg-zinc-900 border border-white/5 overflow-hidden active:scale-95 transition-transform">
                         <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover">
                     </div>`;
             });
         }
 
-        // --- الصفحة الرئيسية ---
+        function jumpToVideo(idx) {
+            if(idx === -1) return;
+            switchTab('home');
+            setTimeout(() => {
+                swiper.slideTo(idx, 300);
+            }, 100);
+        }
+
+        // --- الإحصائيات وإدارة الفيديوهات ---
+        function renderMyVideosList() {
+            const list = document.getElementById('myVideosList');
+            if(!list) return;
+            list.innerHTML = '';
+            const mine = allVideos.filter(v => v.ownerId === uID);
+            mine.forEach(v => {
+                list.innerHTML += `
+                    <div class="bg-zinc-900/60 p-3 rounded-2xl flex items-center gap-4 border border-white/5">
+                        <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-12 rounded-lg object-cover">
+                        <div class="flex-1">
+                            <p class="text-[10px] text-zinc-400 font-bold">Views: ${v.views || 0} | Likes: ${v.likes || 0}</p>
+                        </div>
+                        <button onclick="deleteVideo('${v.id}')" class="bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-[10px] font-black">حذف</button>
+                    </div>`;
+            });
+        }
+
+        async function deleteVideo(id) {
+            if(confirm("هل تريد حذف هذا الفيديو نهائياً؟")) {
+                await db.collection("shared_videos").doc(id).delete();
+            }
+        }
+
+        // --- الوظائف الأساسية المتبقية ---
+        async function handleLike(vidId) {
+            const isLiked = myLikes.includes(vidId);
+            const userRef = db.collection("users").doc(uID);
+            const vidRef = db.collection("shared_videos").doc(vidId);
+            if (isLiked) {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidId) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+            } else {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidId) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+            }
+        }
+
         function renderHome() {
             const wrap = document.getElementById('videoWrapper');
             if (!wrap) return;
@@ -312,13 +363,7 @@
                     </div>`;
             });
             if(swiper) swiper.destroy();
-            swiper = new Swiper(".mySwiper", { 
-                direction: "vertical", 
-                initialSlide: currentIdx, 
-                on: { 
-                    slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } 
-                } 
-            });
+            swiper = new Swiper(".mySwiper", { direction: "vertical", initialSlide: currentIdx, on: { slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } } });
             setTimeout(initPlayers, 500);
             startTimerProcess(currentIdx);
         }
@@ -327,8 +372,7 @@
             allVideos.forEach((v, i) => {
                 if (document.getElementById(`player-${i}`)) {
                     players[i] = new YT.Player(`player-${i}`, {
-                        videoId: v.videoId, 
-                        playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
+                        videoId: v.videoId, playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1 },
                         events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startCountdown(i); } }
                     });
                 }
@@ -343,84 +387,16 @@
             badge.classList.remove('hidden');
             let sec = 10;
             currentTimer = setInterval(async () => {
-                sec--; 
-                document.getElementById('timerText').innerText = sec + "s";
+                sec--; document.getElementById('timerText').innerText = sec + "s";
                 if(sec <= 0) {
-                    clearInterval(currentTimer); 
-                    badge.classList.add('hidden');
+                    clearInterval(currentTimer); badge.classList.add('hidden');
                     showRewardPopup(0.0005);
                     await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(0.0005), watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id) });
-                    await db.collection("shared_video_stats").doc(v.id).set({ views: firebase.firestore.FieldValue.increment(1) }, {merge:true});
                     await db.collection("shared_videos").doc(v.id).update({ views: firebase.firestore.FieldValue.increment(1) });
                 }
             }, 1000);
         }
 
-        // --- المهام (أدمن ومستخدم) ---
-        async function addNewTask() {
-            const title = document.getElementById('taskTitle').value;
-            const link = document.getElementById('taskLink').value;
-            const reward = parseFloat(document.getElementById('taskReward').value);
-            if(!title || !link || isNaN(reward)) return;
-            await db.collection("tasks").add({ title, link, reward, createdAt: new Date() });
-            document.getElementById('taskTitle').value = '';
-            document.getElementById('taskLink').value = '';
-            document.getElementById('taskReward').value = '';
-            alert("تمت إضافة المهمة بنجاح!");
-        }
-
-        function loadTasksForAdmin() {
-            db.collection("tasks").onSnapshot(snap => {
-                const list = document.getElementById('adminTasksList');
-                if(!list) return;
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    list.innerHTML += `
-                        <div class="admin-card flex justify-between items-center text-right">
-                            <button onclick="deleteTask('${doc.id}')" class="text-red-500 text-xs font-bold">حذف</button>
-                            <div class="text-right"><p class="text-sm font-bold">${t.title}</p><p class="text-xs text-red-500">$${t.reward}</p></div>
-                        </div>`;
-                });
-            });
-        }
-
-        async function deleteTask(id) { if(confirm("حذف هذه المهمة؟")) await db.collection("tasks").doc(id).delete(); }
-
-        function loadTasksForUser() {
-            db.collection("tasks").onSnapshot(snap => {
-                const list = document.getElementById('userTasksList');
-                if(!list) return;
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    const done = completedTasks.includes(doc.id);
-                    list.innerHTML += `
-                        <div class="task-card ${done ? 'opacity-40' : ''}">
-                            <div class="flex-1 text-right">
-                                <p class="text-sm font-bold">${t.title}</p>
-                                <p class="text-[10px] text-green-500 font-bold">+$${t.reward}</p>
-                            </div>
-                            <button onclick="${done ? '' : `doTask('${doc.id}', '${t.link}', ${t.reward})`}" class="bg-red-600 px-4 py-2 rounded-xl text-xs font-bold">${done ? 'مكتمل' : 'تنفيذ'}</button>
-                        </div>`;
-                });
-            });
-        }
-
-        async function doTask(id, link, reward) {
-            window.open(link, '_blank');
-            setTimeout(() => {
-                if(confirm("هل أتممت المهمة فعلاً؟")) {
-                    db.collection("users").doc(uID).update({ 
-                        balance: firebase.firestore.FieldValue.increment(reward),
-                        completedTasks: firebase.firestore.FieldValue.arrayUnion(id)
-                    });
-                    showRewardPopup(reward);
-                }
-            }, 2000);
-        }
-
-        // --- تنقل ووظائف عامة ---
         async function switchTab(t) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
             if(t === 'profile_self') { openProfile(uID); return; }
@@ -444,20 +420,55 @@
             }
         }
 
+        function loadTasksForUser() {
+            db.collection("tasks").onSnapshot(snap => {
+                const list = document.getElementById('userTasksList');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    const done = completedTasks.includes(doc.id);
+                    list.innerHTML += `<div class="task-card ${done ? 'opacity-40' : ''}"><div class="flex-1 text-right"><p class="text-sm font-bold">${t.title}</p><p class="text-[10px] text-green-500 font-bold">+$${t.reward}</p></div><button onclick="${done ? '' : `doTask('${doc.id}', '${t.link}', ${t.reward})`}" class="bg-red-600 px-4 py-2 rounded-xl text-xs font-bold">${done ? 'مكتمل' : 'تنفيذ'}</button></div>`;
+                });
+            });
+        }
+
+        async function doTask(id, link, reward) {
+            window.open(link, '_blank');
+            setTimeout(() => { if(confirm("هل أتممت المهمة؟")) { db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(reward), completedTasks: firebase.firestore.FieldValue.arrayUnion(id) }); showRewardPopup(reward); } }, 2000);
+        }
+
+        async function addNewTask() {
+            const title = document.getElementById('taskTitle').value;
+            const link = document.getElementById('taskLink').value;
+            const reward = parseFloat(document.getElementById('taskReward').value);
+            if(!title || !link || isNaN(reward)) return;
+            await db.collection("tasks").add({ title, link, reward, createdAt: new Date() });
+            document.getElementById('taskTitle').value=''; document.getElementById('taskLink').value=''; document.getElementById('taskReward').value=''; alert("تم!");
+        }
+
+        function loadTasksForAdmin() {
+            db.collection("tasks").onSnapshot(snap => {
+                const list = document.getElementById('adminTasksList');
+                if(!list) return; list.innerHTML = '';
+                snap.forEach(doc => { list.innerHTML += `<div class="admin-card flex justify-between items-center text-right"><button onclick="deleteTask('${doc.id}')" class="text-red-500 text-xs font-bold">حذف</button><div class="text-right"><p class="text-sm font-bold">${doc.data().title}</p><p class="text-xs text-red-500">$${doc.data().reward}</p></div></div>`; });
+            });
+        }
+
+        async function deleteTask(id) { if(confirm("حذف؟")) await db.collection("tasks").doc(id).delete(); }
+
         function loadNotifs() {
             db.collection("users").doc(uID).collection("notifs").orderBy("createdAt", "desc").onSnapshot(snap => {
-                const list = document.getElementById('notifList'); if(!list) return;
-                list.innerHTML = '';
+                const list = document.getElementById('notifList'); if(!list) return; list.innerHTML = '';
                 snap.forEach(doc => { list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-xs text-right">${doc.data().message}</div>`; });
             });
         }
 
         function updateStats() {
             const mine = allVideos.filter(v => v.ownerId === uID);
-            let views = 0, likes = 0; mine.forEach(v => { views += (v.views || 0); likes += (v.likes || 0); });
-            const vEl = document.getElementById('totalViews');
-            const lEl = document.getElementById('totalLikes');
-            if(vEl) vEl.innerText = views; if(lEl) lEl.innerText = likes;
+            let v = 0, l = 0; mine.forEach(vid => { v += (vid.views || 0); l += (vid.likes || 0); });
+            if(document.getElementById('totalViews')) document.getElementById('totalViews').innerText = v;
+            if(document.getElementById('totalLikes')) document.getElementById('totalLikes').innerText = l;
         }
 
         function renderChart() {
