@@ -12,7 +12,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, increment, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyALHoUPIxgCMW9o3CQ-Q0BhPPnxKTppMds",
@@ -28,6 +28,8 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = "pepe_royal_v1"; 
+        
+        // معرف المدير (الرقم التعريفي للحساب)
         const ADMIN_ID = 7416599626;
 
         window.state = {
@@ -35,12 +37,19 @@
             clicks: 0,
             target: 10,
             reward: 5000,
-            refReward: 25000,
-            referralCode: ""
+            balance: 0,
+            username: "جاري التحميل...",
+            tgHandle: "",
+            photo: "",
+            myRefCode: ""
         };
 
         async function init() {
             try {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+                
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -56,35 +65,52 @@
             const tgUser = tg.initDataUnsafe?.user;
             const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'data');
 
-            if (tgUser && tgUser.id === ADMIN_ID) {
+            // إظهار لوحة الإدارة للمدير بناءً على الـ ID الرقمي
+            if (tgUser && Number(tgUser.id) === ADMIN_ID) {
                 document.getElementById('nav-admin').classList.remove('hidden');
+                console.log("Admin Access Granted");
             }
 
             onSnapshot(userRef, (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
                     if (data.isBanned) {
-                        document.body.innerHTML = "<div class='h-screen flex items-center justify-center bg-[#050805] text-red-500 font-black p-10 text-center'>حسابك محظور.</div>";
+                        document.body.innerHTML = "<div class='h-screen flex items-center justify-center bg-[#0d0d0d] text-red-500 font-black p-10 text-center'>تم حظر حسابك لمخالفة القوانين.</div>";
                         return;
                     }
-                    window.state.referralCode = data.myRefCode || "";
-                    document.getElementById('bal-top').innerText = (data.balance || 0).toLocaleString();
-                    document.getElementById('bal-wallet').innerText = (data.balance || 0).toLocaleString();
-                    document.getElementById('ref-link').innerText = `https://t.me/YOUR_BOT?start=${data.myRefCode}`;
-                    document.getElementById('ref-count').innerText = data.referralsCount || 0;
+                    window.state.balance = data.balance || 0;
+                    window.state.username = tgUser?.first_name || data.username || "Guest";
+                    window.state.tgHandle = tgUser?.username ? `@${tgUser.username}` : "PEPE_USER";
+                    window.state.photo = tgUser?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                    window.state.myRefCode = data.myRefCode || "";
+                    
+                    updateUI();
                 } else {
-                    const myCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
                     setDoc(userRef, {
                         balance: 0,
                         id: tgUser?.id || 0,
-                        username: tgUser?.username || "Guest",
+                        username: tgUser?.first_name || "Guest",
+                        tgHandle: tgUser?.username || "",
                         isBanned: false,
-                        myRefCode: myCode,
+                        myRefCode: code,
                         referralsCount: 0,
                         joinedAt: new Date().toISOString()
                     });
                 }
             });
+        }
+
+        function updateUI() {
+            ['bal-home', 'bal-points', 'bal-mine', 'bal-top'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = window.state.balance.toLocaleString();
+            });
+
+            document.getElementById('user-name').innerText = window.state.username;
+            document.getElementById('user-handle').innerText = window.state.tgHandle;
+            document.getElementById('user-pic').src = window.state.photo;
+            document.getElementById('ref-link').innerText = `https://t.me/PEPE_ROYAL_BOT?start=${window.state.myRefCode}`;
         }
 
         window.copyRef = () => {
@@ -95,216 +121,302 @@
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            window.Telegram.WebApp.showPopup({ message: "تم نسخ رابط الإحالة! 🔗" });
+            window.Telegram.WebApp.showPopup({ message: "تم نسخ رابط الإحالة! 🚀" });
         };
 
-        window.runAdminAction = async (type) => {
-            const targetId = document.getElementById('adm-id').value;
+        window.adminAction = async (type) => {
+            const tid = document.getElementById('adm-id').value;
             const val = parseInt(document.getElementById('adm-val').value) || 0;
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'users'));
-            let foundUid = null;
-            for (const d of snap.docs) {
-                const p = await getDoc(doc(db, 'artifacts', appId, 'users', d.id, 'profile', 'data'));
-                if(p.exists() && p.data().id == targetId) { foundUid = d.id; break; }
+            if(!tid) return alert("أدخل ID المستخدم أولاً");
+
+            const usersSnap = await getDocs(collection(db, 'artifacts', appId, 'users'));
+            let targetUid = null;
+
+            for (const uDoc of usersSnap.docs) {
+                const p = await getDoc(doc(db, 'artifacts', appId, 'users', uDoc.id, 'profile', 'data'));
+                if(p.exists() && String(p.data().id) === String(tid)) {
+                    targetUid = uDoc.id;
+                    break;
+                }
             }
-            if(!foundUid) return alert("خطأ");
-            const ref = doc(db, 'artifacts', appId, 'users', foundUid, 'profile', 'data');
+
+            if(!targetUid) return alert("المستخدم غير موجود في قاعدة البيانات");
+
+            const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'data');
             if(type === 'add') await updateDoc(ref, { balance: increment(val) });
             if(type === 'ban') await updateDoc(ref, { isBanned: true });
             if(type === 'unban') await updateDoc(ref, { isBanned: false });
-            alert("تم");
+            alert("تم تنفيذ العملية بنجاح");
         };
 
-        window.onload = () => { init(); logic(); };
+        window.onload = () => {
+            init();
+            setupLogic();
+        };
 
-        function logic() {
+        function setupLogic() {
             const tg = window.Telegram.WebApp;
-            const coin = document.getElementById('coin');
-            const bar = document.getElementById('bar');
-            const btn = document.getElementById('claim');
+            const coin = document.getElementById('coin-img');
+            const bar = document.getElementById('progress-bar');
+            const claimBtn = document.getElementById('claim-btn');
 
-            coin.onclick = (e) => {
+            coin.onclick = () => {
                 if (window.state.clicks < window.state.target) {
                     window.state.clicks++;
                     bar.style.width = (window.state.clicks * 10) + "%";
+                    document.getElementById('click-count').innerText = `${window.state.clicks} / 10`;
                     
-                    // تأثير بصري عند اللمس
-                    const rect = coin.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const ripple = document.createElement('span');
-                    ripple.style.left = `${x}px`; ripple.style.top = `${y}px`;
-                    ripple.className = "absolute w-4 h-4 bg-green-400 rounded-full animate-ping pointer-events-none";
-                    coin.parentElement.appendChild(ripple);
-                    setTimeout(() => ripple.remove(), 500);
-
                     if (window.state.clicks >= 10) {
-                        btn.classList.remove('hidden');
-                        coin.style.filter = "grayscale(1) brightness(0.5)";
+                        claimBtn.classList.remove('hidden');
+                        coin.classList.add('opacity-30', 'grayscale');
                     }
                     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
                 }
             };
 
-            btn.onclick = () => {
+            claimBtn.onclick = () => {
                 tg.openLink("https://www.google.com"); 
-                document.getElementById('ad-wait').classList.remove('hidden');
+                document.getElementById('ad-overlay').classList.remove('hidden');
                 let s = 8;
                 const t = setInterval(async () => {
                     s--;
                     document.getElementById('timer').innerText = s;
                     if(s <= 0) {
                         clearInterval(t);
-                        document.getElementById('ad-wait').classList.add('hidden');
+                        document.getElementById('ad-overlay').classList.add('hidden');
                         const r = doc(db, 'artifacts', appId, 'users', window.state.user.uid, 'profile', 'data');
-                        await updateDoc(r, { balance: increment(window.state.reward) });
+                        await updateDoc(r, { balance: increment(5000) });
+                        
                         window.state.clicks = 0;
                         bar.style.width = "0%";
-                        btn.classList.add('hidden');
-                        coin.style.filter = "none";
-                        tg.showPopup({ message: "تم كسب 5,000 PEPE!" });
+                        document.getElementById('click-count').innerText = `0 / 10`;
+                        claimBtn.classList.add('hidden');
+                        coin.classList.remove('opacity-30', 'grayscale');
+                        tg.showPopup({ message: "تمت إضافة 5,000 نقطة إلى رصيدك!" });
                     }
                 }, 1000);
             };
 
-            document.querySelectorAll('.nav-item').forEach(n => {
-                n.onclick = () => {
-                    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-                    document.getElementById(n.dataset.view).classList.remove('hidden');
-                    document.querySelectorAll('.nav-item').forEach(i => i.classList.add('opacity-40'));
-                    n.classList.remove('opacity-40');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const view = btn.dataset.view;
+                    document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
+                    document.getElementById(view).classList.remove('hidden');
+                    
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.add('opacity-40'));
+                    btn.classList.remove('opacity-40');
                 };
             });
         }
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { font-family: 'Cairo', sans-serif; background: radial-gradient(circle at top, #0a1a0a 0%, #050805 100%); color: white; user-select: none; margin: 0; overflow: hidden; }
-        .page { height: 100vh; padding-bottom: 120px; display: flex; flex-direction: column; overflow-y: auto; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .green-glow { text-shadow: 0 0 15px rgba(34, 197, 94, 0.5); }
-        .coin-shadow { filter: drop-shadow(0 0 30px rgba(34, 197, 94, 0.2)); }
-        input { background: rgba(0,0,0,0.5); border: 1px solid #1a1a1a; padding: 14px; border-radius: 18px; width: 100%; margin-bottom: 12px; color: white; outline: none; }
-        .nav-active { opacity: 1 !important; color: #22c55e; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #0d0d0d;
+            color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .main-card {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            box-shadow: 0 10px 40px -10px rgba(22, 163, 74, 0.6);
+        }
+
+        .action-card {
+            background: #1a1a1a;
+            border: 1px solid #262626;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-card:active {
+            background: #222;
+            transform: scale(0.97);
+        }
+
+        .bottom-nav {
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid #262626;
+        }
+
+        .page-view {
+            height: calc(100vh - 90px);
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+
+        .neon-green {
+            text-shadow: 0 0 15px rgba(34, 197, 94, 0.6);
+        }
+
+        input {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 15px;
+            width: 100%;
+            outline: none;
+            color: #fff;
+            font-weight: bold;
+        }
     </style>
 </head>
-<body class="h-screen">
+<body>
 
-    <header class="p-5 flex justify-between items-center z-50 relative">
-        <div class="flex items-center gap-2">
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Cloud Status: <span class="text-green-500">Live</span></span>
+    <!-- الصفحة الرئيسية -->
+    <div id="home" class="page-view p-5">
+        <!-- بروفايل المستخدم المطور -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 bg-gray-800 rounded-3xl p-0.5 border border-white/10 shadow-2xl overflow-hidden relative">
+                    <img id="user-pic" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Pepe" class="w-full h-full object-cover rounded-[22px]" alt="user">
+                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-[#0d0d0d] rounded-full"></div>
+                </div>
+                <div>
+                    <h3 id="user-name" class="font-black text-xl tracking-tight leading-none mb-1">...</h3>
+                    <p id="user-handle" class="text-green-500 text-[10px] font-bold tracking-widest uppercase">@username</p>
+                </div>
+            </div>
+            <button class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 border border-white/5">
+                <i class="fas fa-cog"></i>
+            </button>
         </div>
-        <div class="glass px-5 py-2 rounded-2xl border border-green-500/20 shadow-lg">
-            <span id="bal-top" class="text-2xl font-black font-mono green-glow">0</span>
-            <span class="text-[10px] text-green-500 font-bold mr-1">PEPE</span>
-        </div>
-    </header>
 
-    <main class="relative flex-1">
-        <!-- Mine Page -->
-        <section id="mine" class="page items-center justify-center p-6 gap-8">
-            <div class="text-center">
-                <h1 class="text-5xl font-black italic tracking-tighter mb-1">PEPE ROYAL</h1>
-                <div class="h-[2px] w-20 bg-green-500 mx-auto rounded-full"></div>
+        <!-- بطاقة الرصيد -->
+        <div class="main-card rounded-[45px] p-10 text-center relative overflow-hidden mb-10 border-b-4 border-black/20">
+            <div class="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+            <p class="text-white/60 text-[10px] font-black mb-2 uppercase tracking-[0.4em]">Available Balance</p>
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <span class="text-3xl font-black opacity-30">$</span>
+                <span id="bal-home" class="text-6xl font-black font-mono tracking-tighter">0.00</span>
             </div>
             
-            <div class="relative group">
-                <div class="absolute inset-0 bg-green-500/20 blur-[100px] rounded-full scale-150 transition-all group-active:bg-green-500/40"></div>
-                <img src="https://g.top4top.io/s_3747ccek80.jpg" id="coin" class="w-72 h-72 rounded-full border-[6px] border-green-500/10 coin-shadow relative z-10 cursor-pointer transition-transform active:scale-95 duration-75" alt="Pepe">
+            <div class="inline-flex items-center gap-3 bg-black/40 backdrop-blur-xl px-8 py-2.5 rounded-2xl border border-white/10">
+                <i class="fas fa-gem text-blue-400 text-sm"></i>
+                <span id="bal-points" class="text-xl font-black font-mono tracking-tight">0</span>
+                <span class="text-[10px] font-bold opacity-40 uppercase">Points</span>
             </div>
+        </div>
 
-            <div class="w-full max-w-xs space-y-3">
-                <div class="flex justify-between items-end px-1">
-                    <span class="text-[10px] font-black text-gray-500 uppercase">Power Reserve</span>
-                    <span id="counter" class="text-xs font-black text-green-500 font-mono">Tap to start</span>
-                </div>
-                <div class="h-4 w-full bg-black/50 rounded-full p-1 border border-white/5 shadow-inner">
-                    <div id="bar" class="h-full w-0 bg-gradient-to-r from-green-600 to-green-400 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)] transition-all duration-300"></div>
-                </div>
+        <!-- الأوامر السريعة -->
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="action-card rounded-[30px] p-6 text-center border-l-4 border-green-500">
+                <i class="fas fa-tasks text-green-500 text-2xl mb-3"></i>
+                <h5 class="font-black text-xs uppercase tracking-widest">المهام</h5>
             </div>
+            <div class="action-card rounded-[30px] p-6 text-center border-l-4 border-blue-500">
+                <i class="fas fa-wallet text-blue-500 text-2xl mb-3"></i>
+                <h5 class="font-black text-xs uppercase tracking-widest">المحفظة</h5>
+            </div>
+        </div>
+    </div>
 
-            <button id="claim" class="hidden w-full max-w-xs py-5 bg-green-500 text-black font-black rounded-[25px] shadow-[0_10px_30px_rgba(34,197,94,0.3)] animate-bounce text-lg uppercase">
-                Claim Reward +5K
+    <!-- صفحة النقر -->
+    <div id="mine" class="page-view hidden flex flex-col items-center justify-center p-8">
+        <div class="text-center mb-10">
+            <h2 id="click-count" class="text-6xl font-black font-mono neon-green mb-2">0 / 10</h2>
+            <p class="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Tap to Mine Pepe</p>
+        </div>
+
+        <div class="relative mb-12">
+            <div class="absolute inset-0 bg-green-500/10 blur-[150px] rounded-full scale-150"></div>
+            <img id="coin-img" src="https://g.top4top.io/s_3747ccek80.jpg" 
+                 class="w-80 h-80 rounded-full border-[12px] border-white/5 shadow-[0_0_80px_rgba(34,197,94,0.15)] relative z-10 active:scale-95 transition-transform cursor-pointer" 
+                 alt="Pepe Coin">
+        </div>
+
+        <div class="w-full max-w-sm">
+            <div class="h-5 w-full bg-black/60 rounded-full border border-white/5 p-1.5 mb-8">
+                <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-green-600 to-green-400 rounded-full transition-all duration-500 shadow-[0_0_25px_rgba(34,197,94,0.5)]"></div>
+            </div>
+            <button id="claim-btn" class="hidden w-full py-7 bg-green-500 text-black font-black rounded-[35px] shadow-[0_20px_50px_rgba(34,197,94,0.4)] text-2xl uppercase tracking-[0.2em] animate-pulse">
+                CLAIM +5,000
             </button>
-        </section>
+        </div>
+    </div>
 
-        <!-- Wallet Page -->
-        <section id="wallet" class="page hidden p-8 pt-12 items-center">
-            <div class="w-full glass p-10 rounded-[50px] text-center shadow-2xl">
-                <div class="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i class="fas fa-wallet text-3xl text-green-500"></i>
-                </div>
-                <p class="text-xs text-gray-500 font-bold mb-2 uppercase tracking-widest">Total Earnings</p>
-                <h2 id="bal-wallet" class="text-6xl font-black font-mono mb-10 green-glow">0</h2>
-                <div class="grid grid-cols-1 gap-3">
-                    <button class="w-full py-5 bg-white/5 border border-white/10 rounded-3xl font-black text-gray-400 cursor-not-allowed">WITHDRAW (SOON)</button>
-                </div>
+    <!-- صفحة الإحالة -->
+    <div id="refer" class="page-view hidden p-8">
+        <div class="text-center mb-12">
+            <div class="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
+                <i class="fas fa-gift text-4xl text-green-500"></i>
             </div>
-        </section>
+            <h2 class="text-4xl font-black mb-3">Invite & Earn</h2>
+            <p class="text-gray-500 text-sm font-bold">اكسب 25,000 نقطة عن كل دعوة ناجحة!</p>
+        </div>
 
-        <!-- Friends Page (الاحالة) -->
-        <section id="friends" class="page hidden p-8 pt-12">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-black mb-2">دعوة الأصدقاء</h2>
-                <p class="text-sm text-gray-500">اكسب 25,000 PEPE عن كل صديق ينضم عبر رابطك!</p>
+        <div class="action-card p-10 rounded-[45px] mb-8 text-center relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12"></div>
+            <p class="text-[10px] font-black text-gray-500 uppercase mb-5 tracking-widest">رابط الإحالة</p>
+            <div id="ref-link" class="bg-black/60 p-6 rounded-2xl border border-white/5 text-[10px] font-mono text-green-400 break-all mb-8">
+                جاري التحميل...
             </div>
+            <button onclick="copyRef()" class="w-full py-6 bg-green-500 text-black font-black rounded-[25px] shadow-2xl active:scale-95 transition-transform uppercase tracking-widest text-lg">
+                Copy Link
+            </button>
+        </div>
+    </div>
 
-            <div class="glass p-6 rounded-[35px] mb-6">
-                <div class="flex justify-between items-center mb-6 px-2">
-                    <span class="text-xs font-bold text-gray-400">إجمالي الأصدقاء</span>
-                    <span id="ref-count" class="text-2xl font-black text-green-500 font-mono">0</span>
-                </div>
-                <div class="bg-black/50 p-4 rounded-2xl border border-white/5 break-all text-[10px] text-green-400 font-mono mb-4" id="ref-link">
-                    Loading referral link...
-                </div>
-                <button onclick="copyRef()" class="w-full py-4 bg-green-500 text-black font-black rounded-2xl shadow-lg">نسخ رابط الدعوة</button>
+    <!-- لوحة الإدارة -->
+    <div id="admin" class="page-view hidden p-8">
+        <div class="flex items-center gap-4 mb-10">
+            <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 text-3xl">
+                <i class="fas fa-crown"></i>
             </div>
+            <h2 class="text-3xl font-black text-yellow-500">Control Panel</h2>
+        </div>
 
-            <div class="space-y-3">
-                <div class="glass p-5 rounded-2xl flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><i class="fas fa-user-plus"></i></div>
-                        <div><p class="text-sm font-black">دعوة 10 أصدقاء</p><p class="text-[10px] text-gray-500">مكافأة 250,000</p></div>
-                    </div>
-                    <i class="fas fa-lock text-gray-700"></i>
-                </div>
+        <div class="action-card p-8 rounded-[40px] space-y-6">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Telegram ID</label>
+                <input type="number" id="adm-id" placeholder="Ex: 7416599626">
             </div>
-        </section>
-
-        <!-- Admin Page -->
-        <section id="admin" class="page hidden p-8 pt-12">
-            <h2 class="text-2xl font-black text-yellow-500 mb-6 flex items-center gap-3">
-                <i class="fas fa-crown"></i> Control Panel
-            </h2>
-            <div class="glass p-8 rounded-[40px] space-y-4">
-                <input type="number" id="adm-id" placeholder="User Telegram ID">
-                <input type="number" id="adm-val" placeholder="Amount to Add">
-                <button onclick="runAdminAction('add')" class="w-full bg-green-600 py-4 rounded-2xl font-black shadow-lg">تحديث الرصيد</button>
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <button onclick="runAdminAction('ban')" class="bg-red-900/40 border border-red-500/20 py-4 rounded-2xl font-black text-red-500 uppercase text-xs">Ban</button>
-                    <button onclick="runAdminAction('unban')" class="bg-gray-800 py-4 rounded-2xl font-black text-gray-400 uppercase text-xs">Unban</button>
-                </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Points Amount</label>
+                <input type="number" id="adm-val" placeholder="Ex: 100000">
             </div>
-        </section>
-    </main>
+            
+            <button onclick="adminAction('add')" class="w-full bg-green-600 py-6 rounded-[25px] font-black text-white shadow-xl active:scale-95 transition-all text-lg uppercase tracking-widest">Update Balance</button>
+            
+            <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                <button onclick="adminAction('ban')" class="bg-red-600/10 border border-red-500/20 py-5 rounded-2xl font-black text-red-500 text-xs uppercase tracking-widest">Ban User</button>
+                <button onclick="adminAction('unban')" class="bg-gray-800 py-5 rounded-2xl font-black text-gray-400 text-xs uppercase tracking-widest">Unban User</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Navbar -->
-    <nav class="fixed bottom-8 left-8 right-8 glass rounded-[40px] p-2 flex justify-around items-center z-50 border border-white/10 shadow-2xl">
-        <button data-view="mine" class="nav-item p-4 text-xl"><i class="fas fa-bolt"></i></button>
-        <button data-view="friends" class="nav-item p-4 opacity-40 text-xl"><i class="fas fa-users"></i></button>
-        <button data-view="wallet" class="nav-item p-4 opacity-40 text-xl"><i class="fas fa-wallet"></i></button>
-        <button id="nav-admin" data-view="admin" class="nav-item hidden opacity-40 p-4 text-xl text-yellow-500"><i class="fas fa-shield-alt"></i></button>
+    <!-- التنقل السفلي -->
+    <nav class="fixed bottom-0 left-0 right-0 h-28 bottom-nav flex justify-around items-center px-10 z-50 rounded-t-[40px]">
+        <button data-view="home" class="nav-btn flex flex-col items-center gap-2">
+            <i class="fas fa-home text-2xl"></i>
+            <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+        </button>
+        <button data-view="mine" class="nav-btn opacity-40 flex flex-col items-center gap-2">
+            <i class="fas fa-hammer text-2xl"></i>
+            <span class="text-[8px] font-black uppercase tracking-widest">Mine</span>
+        </button>
+        <button data-view="refer" class="nav-btn opacity-40 flex flex-col items-center gap-2">
+            <i class="fas fa-users text-2xl"></i>
+            <span class="text-[8px] font-black uppercase tracking-widest">Friends</span>
+        </button>
+        <button id="nav-admin" data-view="admin" class="nav-btn hidden opacity-40 flex flex-col items-center gap-2 text-yellow-500">
+            <i class="fas fa-crown text-2xl"></i>
+            <span class="text-[8px] font-black uppercase tracking-widest">Admin</span>
+        </button>
     </nav>
 
-    <!-- Overlay Loader -->
-    <div id="ad-wait" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl hidden flex flex-col items-center justify-center p-12">
-        <div class="relative">
-            <div class="w-24 h-24 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin"></div>
-            <div id="timer" class="absolute inset-0 flex items-center justify-center text-3xl font-black text-green-500 font-mono">8</div>
+    <!-- شاشة المكافأة -->
+    <div id="ad-overlay" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl hidden flex flex-col items-center justify-center p-12">
+        <div class="relative mb-12">
+            <div class="w-32 h-32 border-[8px] border-green-500/10 border-t-green-500 rounded-full animate-spin"></div>
+            <div id="timer" class="absolute inset-0 flex items-center justify-center text-5xl font-black text-green-500 font-mono">8</div>
         </div>
-        <p class="mt-10 text-xs font-black text-gray-500 tracking-[0.3em] uppercase">Securing Pepe Assets</p>
+        <p class="text-gray-400 font-black text-xs tracking-[0.6em] uppercase animate-pulse">Confirming Reward</p>
     </div>
 
 </body>
