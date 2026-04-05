@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PEPE ROYAL - Pro Edition</title>
+    <title>PEPE ROYAL - Real Data Edition</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,17 +29,16 @@
         const db = getFirestore(app);
         const appId = "pepe_royal_v1"; 
         
-        // معرف المدير (الرقم التعريفي للحساب)
+        // معرف المسؤول الحقيقي (حسابك)
         const ADMIN_ID = 7416599626;
 
         window.state = {
             user: null,
             clicks: 0,
             target: 10,
-            reward: 5000,
             balance: 0,
             username: "جاري التحميل...",
-            tgHandle: "",
+            tgHandle: "@...",
             photo: "",
             myRefCode: ""
         };
@@ -57,40 +56,51 @@
                         setupSync(user.uid);
                     }
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Auth Error:", e); }
         }
 
         async function setupSync(uid) {
             const tg = window.Telegram.WebApp;
             const tgUser = tg.initDataUnsafe?.user;
+            
+            // في حال وجود بيانات تليجرام، نستخدمها كمصدر أولي
+            const initialName = tgUser?.first_name || "مستخدم جديد";
+            const initialHandle = tgUser?.username ? `@${tgUser.username}` : "@PEPE_USER";
+            const currentTgId = tgUser?.id ? Number(tgUser.id) : null;
+
             const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'data');
 
-            // إظهار لوحة الإدارة للمدير بناءً على الـ ID الرقمي
-            if (tgUser && Number(tgUser.id) === ADMIN_ID) {
-                document.getElementById('nav-admin').classList.remove('hidden');
-                console.log("Admin Access Granted");
-            }
-
+            // مراقبة البيانات الحقيقية من الداتابيز
             onSnapshot(userRef, (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
+                    
                     if (data.isBanned) {
-                        document.body.innerHTML = "<div class='h-screen flex items-center justify-center bg-[#0d0d0d] text-red-500 font-black p-10 text-center'>تم حظر حسابك لمخالفة القوانين.</div>";
+                        document.body.innerHTML = "<div class='h-screen flex flex-col items-center justify-center bg-[#0d0d0d] text-red-500 font-black p-10 text-center'><i class='fas fa-ban text-6xl mb-4'></i><br>تم حظر حسابك نهائياً.</div>";
                         return;
                     }
+
+                    // تحديث الـ State من الداتابيز (المعلومات الحقيقية)
                     window.state.balance = data.balance || 0;
-                    window.state.username = tgUser?.first_name || data.username || "Guest";
-                    window.state.tgHandle = tgUser?.username ? `@${tgUser.username}` : "PEPE_USER";
-                    window.state.photo = tgUser?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                    window.state.username = data.username || initialName;
+                    window.state.tgHandle = data.tgHandle ? `@${data.tgHandle}` : initialHandle;
                     window.state.myRefCode = data.myRefCode || "";
-                    
+                    window.state.photo = tgUser?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+
+                    // التحقق من صلاحية المسؤول بالـ ID الحقيقي
+                    const savedId = Number(data.id);
+                    if (savedId === ADMIN_ID || currentTgId === ADMIN_ID) {
+                        document.getElementById('nav-admin').classList.remove('hidden');
+                    }
+
                     updateUI();
                 } else {
+                    // إنشاء حساب جديد في الداتابيز لأول مرة
                     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
                     setDoc(userRef, {
                         balance: 0,
                         id: tgUser?.id || 0,
-                        username: tgUser?.first_name || "Guest",
+                        username: initialName,
                         tgHandle: tgUser?.username || "",
                         isBanned: false,
                         myRefCode: code,
@@ -98,20 +108,28 @@
                         joinedAt: new Date().toISOString()
                     });
                 }
+            }, (error) => {
+                console.error("Firestore Error:", error);
             });
         }
 
         function updateUI() {
-            ['bal-home', 'bal-points', 'bal-mine', 'bal-top'].forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.innerText = window.state.balance.toLocaleString();
-            });
-
+            document.getElementById('bal-home').innerText = window.state.balance.toLocaleString();
+            document.getElementById('bal-points').innerText = window.state.balance.toLocaleString();
             document.getElementById('user-name').innerText = window.state.username;
             document.getElementById('user-handle').innerText = window.state.tgHandle;
             document.getElementById('user-pic').src = window.state.photo;
             document.getElementById('ref-link').innerText = `https://t.me/PEPE_ROYAL_BOT?start=${window.state.myRefCode}`;
         }
+
+        // خاصية الطوارئ لفتح لوحة الإدارة يدوياً بالـ ID
+        window.manualAdminCheck = () => {
+            const id = prompt("أدخل معرف المسؤول (ID):");
+            if (Number(id) === ADMIN_ID) {
+                document.getElementById('nav-admin').classList.remove('hidden');
+                alert("أهلاً بك أيها الملك! تم تفعيل لوحة التحكم.");
+            }
+        };
 
         window.copyRef = () => {
             const link = document.getElementById('ref-link').innerText;
@@ -121,32 +139,36 @@
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            window.Telegram.WebApp.showPopup({ message: "تم نسخ رابط الإحالة! 🚀" });
+            window.Telegram.WebApp.showPopup({ message: "تم نسخ رابط الدعوة بنجاح! 🎁" });
         };
 
         window.adminAction = async (type) => {
             const tid = document.getElementById('adm-id').value;
             const val = parseInt(document.getElementById('adm-val').value) || 0;
-            if(!tid) return alert("أدخل ID المستخدم أولاً");
+            if(!tid) return alert("يرجى إدخال ID المستخدم");
 
-            const usersSnap = await getDocs(collection(db, 'artifacts', appId, 'users'));
-            let targetUid = null;
+            try {
+                const usersSnap = await getDocs(collection(db, 'artifacts', appId, 'users'));
+                let targetUid = null;
 
-            for (const uDoc of usersSnap.docs) {
-                const p = await getDoc(doc(db, 'artifacts', appId, 'users', uDoc.id, 'profile', 'data'));
-                if(p.exists() && String(p.data().id) === String(tid)) {
-                    targetUid = uDoc.id;
-                    break;
+                for (const uDoc of usersSnap.docs) {
+                    const p = await getDoc(doc(db, 'artifacts', appId, 'users', uDoc.id, 'profile', 'data'));
+                    if(p.exists() && String(p.data().id) === String(tid)) {
+                        targetUid = uDoc.id;
+                        break;
+                    }
                 }
+
+                if(!targetUid) return alert("عذراً، لم يتم العثور على هذا المستخدم.");
+
+                const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'data');
+                if(type === 'add') await updateDoc(ref, { balance: increment(val) });
+                if(type === 'ban') await updateDoc(ref, { isBanned: true });
+                if(type === 'unban') await updateDoc(ref, { isBanned: false });
+                alert("تم تنفيذ طلبك بنجاح ✅");
+            } catch (err) {
+                alert("حدث خطأ أثناء التنفيذ.");
             }
-
-            if(!targetUid) return alert("المستخدم غير موجود في قاعدة البيانات");
-
-            const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'data');
-            if(type === 'add') await updateDoc(ref, { balance: increment(val) });
-            if(type === 'ban') await updateDoc(ref, { isBanned: true });
-            if(type === 'unban') await updateDoc(ref, { isBanned: false });
-            alert("تم تنفيذ العملية بنجاح");
         };
 
         window.onload = () => {
@@ -161,20 +183,20 @@
             const claimBtn = document.getElementById('claim-btn');
 
             coin.onclick = () => {
-                if (window.state.clicks < window.state.target) {
+                if (window.state.clicks < 10) {
                     window.state.clicks++;
                     bar.style.width = (window.state.clicks * 10) + "%";
                     document.getElementById('click-count').innerText = `${window.state.clicks} / 10`;
                     
                     if (window.state.clicks >= 10) {
                         claimBtn.classList.remove('hidden');
-                        coin.classList.add('opacity-30', 'grayscale');
+                        coin.classList.add('opacity-30', 'grayscale', 'pointer-events-none');
                     }
-                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                 }
             };
 
-            claimBtn.onclick = () => {
+            claimBtn.onclick = async () => {
                 tg.openLink("https://www.google.com"); 
                 document.getElementById('ad-overlay').classList.remove('hidden');
                 let s = 8;
@@ -184,6 +206,7 @@
                     if(s <= 0) {
                         clearInterval(t);
                         document.getElementById('ad-overlay').classList.add('hidden');
+                        
                         const r = doc(db, 'artifacts', appId, 'users', window.state.user.uid, 'profile', 'data');
                         await updateDoc(r, { balance: increment(5000) });
                         
@@ -191,8 +214,7 @@
                         bar.style.width = "0%";
                         document.getElementById('click-count').innerText = `0 / 10`;
                         claimBtn.classList.add('hidden');
-                        coin.classList.remove('opacity-30', 'grayscale');
-                        tg.showPopup({ message: "تمت إضافة 5,000 نقطة إلى رصيدك!" });
+                        coin.classList.remove('opacity-30', 'grayscale', 'pointer-events-none');
                     }
                 }, 1000);
             };
@@ -202,7 +224,6 @@
                     const view = btn.dataset.view;
                     document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
                     document.getElementById(view).classList.remove('hidden');
-                    
                     document.querySelectorAll('.nav-btn').forEach(b => b.classList.add('opacity-40'));
                     btn.classList.remove('opacity-40');
                 };
@@ -211,212 +232,123 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-        
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #0d0d0d;
-            color: #ffffff;
-            margin: 0;
-            overflow: hidden;
-            user-select: none;
-        }
-
-        .main-card {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            box-shadow: 0 10px 40px -10px rgba(22, 163, 74, 0.6);
-        }
-
-        .action-card {
-            background: #1a1a1a;
-            border: 1px solid #262626;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .action-card:active {
-            background: #222;
-            transform: scale(0.97);
-        }
-
-        .bottom-nav {
-            background: rgba(20, 20, 20, 0.95);
-            backdrop-filter: blur(15px);
-            border-top: 1px solid #262626;
-        }
-
-        .page-view {
-            height: calc(100vh - 90px);
-            overflow-y: auto;
-            padding-bottom: 50px;
-        }
-
-        .neon-green {
-            text-shadow: 0 0 15px rgba(34, 197, 94, 0.6);
-        }
-
-        input {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid #333;
-            padding: 15px;
-            border-radius: 15px;
-            width: 100%;
-            outline: none;
-            color: #fff;
-            font-weight: bold;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #080808; color: #fff; margin: 0; overflow: hidden; user-select: none; }
+        .main-card { background: linear-gradient(145deg, #16a34a, #15803d); box-shadow: 0 15px 35px rgba(22, 163, 74, 0.4); }
+        .action-card { background: #121212; border: 1px solid #1f1f1f; }
+        .bottom-nav { background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(20px); border-top: 1px solid #1a1a1a; }
+        .page-view { height: calc(100vh - 110px); overflow-y: auto; padding-bottom: 40px; }
+        .neon-text { text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
+        input { background: #000; border: 1px solid #222; padding: 18px; border-radius: 20px; width: 100%; color: #fff; outline: none; }
+        .coin-shadow { filter: drop-shadow(0 0 30px rgba(34, 197, 94, 0.2)); }
     </style>
 </head>
 <body>
 
     <!-- الصفحة الرئيسية -->
-    <div id="home" class="page-view p-5">
-        <!-- بروفايل المستخدم المطور -->
+    <div id="home" class="page-view p-6">
+        <!-- هيدر المستخدم الحقيقي -->
         <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-4">
-                <div class="w-16 h-16 bg-gray-800 rounded-3xl p-0.5 border border-white/10 shadow-2xl overflow-hidden relative">
-                    <img id="user-pic" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Pepe" class="w-full h-full object-cover rounded-[22px]" alt="user">
-                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-[#0d0d0d] rounded-full"></div>
-                </div>
-                <div>
-                    <h3 id="user-name" class="font-black text-xl tracking-tight leading-none mb-1">...</h3>
-                    <p id="user-handle" class="text-green-500 text-[10px] font-bold tracking-widest uppercase">@username</p>
+                <button onclick="manualAdminCheck()" class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-500 border border-white/5">
+                    <i class="fas fa-crown text-sm"></i>
+                </button>
+                <div class="text-right">
+                    <p id="user-handle" class="text-green-500 text-[10px] font-bold tracking-widest">@...</p>
+                    <h3 id="user-name" class="font-black text-xl leading-none">جاري التحميل...</h3>
                 </div>
             </div>
-            <button class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 border border-white/5">
-                <i class="fas fa-cog"></i>
-            </button>
-        </div>
-
-        <!-- بطاقة الرصيد -->
-        <div class="main-card rounded-[45px] p-10 text-center relative overflow-hidden mb-10 border-b-4 border-black/20">
-            <div class="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-            <p class="text-white/60 text-[10px] font-black mb-2 uppercase tracking-[0.4em]">Available Balance</p>
-            <div class="flex items-center justify-center gap-3 mb-4">
-                <span class="text-3xl font-black opacity-30">$</span>
-                <span id="bal-home" class="text-6xl font-black font-mono tracking-tighter">0.00</span>
-            </div>
-            
-            <div class="inline-flex items-center gap-3 bg-black/40 backdrop-blur-xl px-8 py-2.5 rounded-2xl border border-white/10">
-                <i class="fas fa-gem text-blue-400 text-sm"></i>
-                <span id="bal-points" class="text-xl font-black font-mono tracking-tight">0</span>
-                <span class="text-[10px] font-bold opacity-40 uppercase">Points</span>
+            <div class="w-14 h-14 bg-gray-900 rounded-2xl p-0.5 border border-white/10 overflow-hidden">
+                <img id="user-pic" src="" class="w-full h-full object-cover rounded-[14px]" alt="P">
             </div>
         </div>
 
-        <!-- الأوامر السريعة -->
-        <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="action-card rounded-[30px] p-6 text-center border-l-4 border-green-500">
-                <i class="fas fa-tasks text-green-500 text-2xl mb-3"></i>
-                <h5 class="font-black text-xs uppercase tracking-widest">المهام</h5>
+        <!-- الرصيد الحقيقي -->
+        <div class="main-card rounded-[40px] p-8 text-center relative overflow-hidden mb-8">
+            <p class="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-2">Total Balance</p>
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <span id="bal-home" class="text-5xl font-black font-mono">0</span>
+                <span class="text-xl font-bold opacity-40">$</span>
             </div>
-            <div class="action-card rounded-[30px] p-6 text-center border-l-4 border-blue-500">
-                <i class="fas fa-wallet text-blue-500 text-2xl mb-3"></i>
-                <h5 class="font-black text-xs uppercase tracking-widest">المحفظة</h5>
+            <div class="inline-flex items-center gap-2 bg-black/30 px-6 py-2 rounded-full border border-white/5">
+                <span id="bal-points" class="text-lg font-bold font-mono">0</span>
+                <i class="fas fa-gem text-blue-400 text-xs"></i>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="action-card p-6 rounded-[30px] text-center">
+                <i class="fas fa-bolt text-yellow-500 text-xl mb-2"></i>
+                <p class="text-[10px] font-bold opacity-60 uppercase">المهام</p>
+            </div>
+            <div class="action-card p-6 rounded-[30px] text-center">
+                <i class="fas fa-wallet text-blue-500 text-xl mb-2"></i>
+                <p class="text-[10px] font-bold opacity-60 uppercase">المحفظة</p>
             </div>
         </div>
     </div>
 
     <!-- صفحة النقر -->
     <div id="mine" class="page-view hidden flex flex-col items-center justify-center p-8">
-        <div class="text-center mb-10">
-            <h2 id="click-count" class="text-6xl font-black font-mono neon-green mb-2">0 / 10</h2>
-            <p class="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Tap to Mine Pepe</p>
+        <h2 id="click-count" class="text-6xl font-black font-mono neon-text mb-12">0 / 10</h2>
+        <div class="relative active:scale-95 transition-transform">
+            <img id="coin-img" src="https://g.top4top.io/s_3747ccek80.jpg" class="w-72 h-72 rounded-full border-[10px] border-white/5 coin-shadow" alt="C">
         </div>
-
-        <div class="relative mb-12">
-            <div class="absolute inset-0 bg-green-500/10 blur-[150px] rounded-full scale-150"></div>
-            <img id="coin-img" src="https://g.top4top.io/s_3747ccek80.jpg" 
-                 class="w-80 h-80 rounded-full border-[12px] border-white/5 shadow-[0_0_80px_rgba(34,197,94,0.15)] relative z-10 active:scale-95 transition-transform cursor-pointer" 
-                 alt="Pepe Coin">
-        </div>
-
-        <div class="w-full max-w-sm">
-            <div class="h-5 w-full bg-black/60 rounded-full border border-white/5 p-1.5 mb-8">
-                <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-green-600 to-green-400 rounded-full transition-all duration-500 shadow-[0_0_25px_rgba(34,197,94,0.5)]"></div>
+        <div class="w-full max-w-xs mt-12">
+            <div class="h-3 w-full bg-white/5 rounded-full mb-6 overflow-hidden">
+                <div id="progress-bar" class="h-full w-0 bg-green-500 transition-all duration-300"></div>
             </div>
-            <button id="claim-btn" class="hidden w-full py-7 bg-green-500 text-black font-black rounded-[35px] shadow-[0_20px_50px_rgba(34,197,94,0.4)] text-2xl uppercase tracking-[0.2em] animate-pulse">
-                CLAIM +5,000
-            </button>
+            <button id="claim-btn" class="hidden w-full py-5 bg-green-500 text-black font-black rounded-2xl shadow-xl uppercase">أحصل على المكافأة</button>
         </div>
     </div>
 
     <!-- صفحة الإحالة -->
-    <div id="refer" class="page-view hidden p-8">
-        <div class="text-center mb-12">
-            <div class="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
-                <i class="fas fa-gift text-4xl text-green-500"></i>
-            </div>
-            <h2 class="text-4xl font-black mb-3">Invite & Earn</h2>
-            <p class="text-gray-500 text-sm font-bold">اكسب 25,000 نقطة عن كل دعوة ناجحة!</p>
-        </div>
-
-        <div class="action-card p-10 rounded-[45px] mb-8 text-center relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-12 -mt-12"></div>
-            <p class="text-[10px] font-black text-gray-500 uppercase mb-5 tracking-widest">رابط الإحالة</p>
-            <div id="ref-link" class="bg-black/60 p-6 rounded-2xl border border-white/5 text-[10px] font-mono text-green-400 break-all mb-8">
-                جاري التحميل...
-            </div>
-            <button onclick="copyRef()" class="w-full py-6 bg-green-500 text-black font-black rounded-[25px] shadow-2xl active:scale-95 transition-transform uppercase tracking-widest text-lg">
-                Copy Link
-            </button>
-        </div>
+    <div id="refer" class="page-view hidden p-8 text-center flex flex-col justify-center">
+        <i class="fas fa-users text-6xl text-green-500/20 mb-6"></i>
+        <h2 class="text-3xl font-black mb-2">إدعو أصدقائك</h2>
+        <p class="text-gray-500 text-sm mb-8">انسخ الرابط وشاركه مع الجميع لتربح 25,000 نقطة</p>
+        <div id="ref-link" class="bg-black border border-white/5 p-5 rounded-2xl text-[10px] font-mono text-green-500 mb-4 break-all">...</div>
+        <button onclick="copyRef()" class="w-full py-5 bg-green-500 text-black font-black rounded-2xl">نسخ الرابط</button>
     </div>
 
     <!-- لوحة الإدارة -->
     <div id="admin" class="page-view hidden p-8">
-        <div class="flex items-center gap-4 mb-10">
-            <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 text-3xl">
-                <i class="fas fa-crown"></i>
-            </div>
-            <h2 class="text-3xl font-black text-yellow-500">Control Panel</h2>
-        </div>
-
-        <div class="action-card p-8 rounded-[40px] space-y-6">
-            <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Telegram ID</label>
-                <input type="number" id="adm-id" placeholder="Ex: 7416599626">
-            </div>
-            <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Points Amount</label>
-                <input type="number" id="adm-val" placeholder="Ex: 100000">
-            </div>
-            
-            <button onclick="adminAction('add')" class="w-full bg-green-600 py-6 rounded-[25px] font-black text-white shadow-xl active:scale-95 transition-all text-lg uppercase tracking-widest">Update Balance</button>
-            
-            <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                <button onclick="adminAction('ban')" class="bg-red-600/10 border border-red-500/20 py-5 rounded-2xl font-black text-red-500 text-xs uppercase tracking-widest">Ban User</button>
-                <button onclick="adminAction('unban')" class="bg-gray-800 py-5 rounded-2xl font-black text-gray-400 text-xs uppercase tracking-widest">Unban User</button>
+        <h2 class="text-2xl font-black text-yellow-500 mb-6">لوحة التحكم الملكية</h2>
+        <div class="space-y-4">
+            <input type="number" id="adm-id" placeholder="ID المستخدم (الرقم)">
+            <input type="number" id="adm-val" placeholder="كمية النقاط">
+            <button onclick="adminAction('add')" class="w-full bg-green-600 py-5 rounded-2xl font-black">إضافة رصيد</button>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="adminAction('ban')" class="bg-red-600/20 text-red-500 py-4 rounded-2xl font-bold">حظر</button>
+                <button onclick="adminAction('unban')" class="bg-gray-800 py-4 rounded-2xl font-bold text-gray-400">إلغاء حظر</button>
             </div>
         </div>
     </div>
 
-    <!-- التنقل السفلي -->
-    <nav class="fixed bottom-0 left-0 right-0 h-28 bottom-nav flex justify-around items-center px-10 z-50 rounded-t-[40px]">
-        <button data-view="home" class="nav-btn flex flex-col items-center gap-2">
-            <i class="fas fa-home text-2xl"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+    <!-- شريط التنقل -->
+    <nav class="fixed bottom-0 left-0 right-0 h-24 bottom-nav flex justify-around items-center px-6 z-50">
+        <button data-view="home" class="nav-btn flex flex-col items-center gap-1">
+            <i class="fas fa-home text-xl"></i>
+            <span class="text-[8px] font-bold uppercase">الرئيسية</span>
         </button>
-        <button data-view="mine" class="nav-btn opacity-40 flex flex-col items-center gap-2">
-            <i class="fas fa-hammer text-2xl"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Mine</span>
+        <button data-view="mine" class="nav-btn opacity-40 flex flex-col items-center gap-1">
+            <i class="fas fa-hammer text-xl"></i>
+            <span class="text-[8px] font-bold uppercase">تعدين</span>
         </button>
-        <button data-view="refer" class="nav-btn opacity-40 flex flex-col items-center gap-2">
-            <i class="fas fa-users text-2xl"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Friends</span>
+        <button data-view="refer" class="nav-btn opacity-40 flex flex-col items-center gap-1">
+            <i class="fas fa-gift text-xl"></i>
+            <span class="text-[8px] font-bold uppercase">هدايا</span>
         </button>
-        <button id="nav-admin" data-view="admin" class="nav-btn hidden opacity-40 flex flex-col items-center gap-2 text-yellow-500">
-            <i class="fas fa-crown text-2xl"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Admin</span>
+        <button id="nav-admin" data-view="admin" class="nav-btn hidden opacity-40 flex flex-col items-center gap-1 text-yellow-500">
+            <i class="fas fa-crown text-xl"></i>
+            <span class="text-[8px] font-bold uppercase">الإدارة</span>
         </button>
     </nav>
 
-    <!-- شاشة المكافأة -->
-    <div id="ad-overlay" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl hidden flex flex-col items-center justify-center p-12">
-        <div class="relative mb-12">
-            <div class="w-32 h-32 border-[8px] border-green-500/10 border-t-green-500 rounded-full animate-spin"></div>
-            <div id="timer" class="absolute inset-0 flex items-center justify-center text-5xl font-black text-green-500 font-mono">8</div>
-        </div>
-        <p class="text-gray-400 font-black text-xs tracking-[0.6em] uppercase animate-pulse">Confirming Reward</p>
+    <!-- انتظار المكافأة -->
+    <div id="ad-overlay" class="fixed inset-0 z-[200] bg-black/98 hidden flex flex-col items-center justify-center">
+        <div id="timer" class="text-7xl font-black text-green-500 font-mono mb-4 shadow-lg">8</div>
+        <p class="text-gray-500 font-bold uppercase tracking-[0.5em] text-[10px]">جاري التحقق...</p>
     </div>
 
 </body>
