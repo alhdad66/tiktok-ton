@@ -3,366 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>عبود برو - Creator Studio</title>
+    <title>PEPE ROYAL - Pro Edition</title>
+    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Cairo', sans-serif; color: white; overflow: hidden; }
-        .swiper { width: 100%; height: 100vh; }
-        .nav-btn { transition: all 0.3s; color: #555; }
-        .nav-btn.active { color: #dc2626; transform: scale(1.1); }
-        .glass { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.05); }
-        .page { height: 100vh; overflow-y: auto; padding-bottom: 120px; display: none; }
-        .page.active { display: block; }
-        .publish-btn { background: #dc2626; width: 60px; height: 35px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
-        .studio-card { background: rgba(24, 24, 27, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
-        ::-webkit-scrollbar { width: 0px; }
-    </style>
-</head>
-<body>
-
-    <!-- التوب بار: تاج، رصيد، إشعارات -->
-    <div class="fixed top-0 left-0 right-0 h-16 flex justify-between items-center px-4 z-[6000] pointer-events-none">
-        <div class="flex items-center gap-2 pointer-events-auto">
-            <button onclick="switchTab('admin')" id="crownBtn" class="text-2xl hidden">👑</button>
-            <button onclick="switchTab('notifs')" class="relative text-xl p-2 bg-zinc-900/50 rounded-full border border-white/5">
-                🔔<div id="notifBadge" class="absolute -top-1 -right-1 bg-red-600 text-[8px] w-4 h-4 rounded-full hidden flex items-center justify-center font-black">0</div>
-            </button>
-        </div>
-        <div class="pointer-events-auto bg-zinc-900/80 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
-            <span id="topBalance" class="text-red-500 font-black text-sm">$0.0000</span>
-        </div>
-    </div>
-
-    <!-- المحتوى الرئيسي -->
-    <div id="homePage" class="page active"><div class="swiper"><div class="swiper-wrapper" id="videoWrapper"></div></div></div>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
-    <div id="tasksPage" class="page p-6 pt-24"><h2 class="text-3xl font-black mb-8 text-red-600 italic">المهام 📋</h2><div id="tasksList" class="space-y-4"></div></div>
-    
-    <div id="notifsPage" class="page p-6 pt-24"><h2 class="text-2xl font-black mb-6 px-2 text-right">الإشعارات</h2><div id="notifList" class="space-y-3 px-2"></div></div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <div id="profilePage" class="page p-6 pt-24 text-center">
-        <div class="w-24 h-24 rounded-full border-2 border-red-600 p-1 mx-auto mb-4"><img id="userImg" src="" class="w-full h-full rounded-full object-cover"></div>
-        <h2 id="userNameDisp" class="text-xl font-black italic mb-6">...</h2>
-        <div class="studio-card p-6 mb-4">
-            <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">الرصيد الكلي</p>
-            <p id="profileBalance" class="text-3xl font-black text-red-600">$0.0000</p>
-        </div>
-        <button onclick="openModal('withdrawModal')" class="w-full bg-red-600 py-4 rounded-2xl font-black shadow-lg">سحب الأرباح 💸</button>
-    </div>
-
-    <!-- لوحة التحكم للآدمن -->
-    <div id="adminPage" class="page p-6 pt-24 text-right">
-        <h2 class="text-3xl font-black mb-8 text-red-600 italic">لوحة الإدارة 👑</h2>
-        <div id="adminWithdrawalsList" class="mb-8 space-y-3"></div>
-        <div class="studio-card p-6 mb-8 border-red-600/20">
-            <h3 class="font-black mb-4 text-red-500">إضافة مهمة</h3>
-            <input id="taskTitle" type="text" placeholder="العنوان" class="w-full bg-black border border-white/10 p-4 rounded-xl text-xs mb-2 text-right">
-            <input id="taskLink" type="text" placeholder="الرابط" class="w-full bg-black border border-white/10 p-4 rounded-xl text-xs mb-2 text-right text-white">
-            <input id="taskReward" type="number" step="0.0001" placeholder="المكافأة $" class="w-full bg-black border border-white/10 p-4 rounded-xl text-xs mb-4 text-right">
-            <button onclick="addNewTask()" class="w-full bg-red-600 py-3 rounded-xl font-black">حفظ المهمة</button>
-        </div>
-        <div id="adminUsersList" class="space-y-4"></div>
-    </div>
-
-    <!-- شريط التنقل السفلي -->
-    <div class="fixed bottom-0 left-0 right-0 h-20 glass flex justify-around items-center z-[5000]">
-        <button onclick="switchTab('home')" class="nav-btn active text-2xl">🏠</button>
-        <button onclick="switchTab('tasks')" class="nav-btn text-2xl">📋</button>
-        <button onclick="openStudio()" class="publish-btn">+</button>
-        <button onclick="switchTab('profile')" class="nav-btn text-2xl">👤</button>
-    </div>
-
-    <!-- نافذة استوديو المنشئ (التي طلبتها) -->
-    <div id="studioModal" class="fixed inset-0 bg-black z-[10000] hidden overflow-y-auto pb-24">
-        <div class="p-6 pt-12">
-            <div class="flex justify-between items-center mb-8">
-                <button onclick="closeModal('studioModal')" class="text-zinc-500 text-sm font-bold italic">إغلاق</button>
-                <h2 class="text-2xl font-black text-red-600 italic">مركز المنشئ 🎥</h2>
-            </div>
-
-            <!-- 1. قسم النشر -->
-            <div class="studio-card p-6 mb-6">
-                <h3 class="text-sm font-black mb-4 text-right">نشر فيديو يوتيوب</h3>
-                <div class="flex gap-2">
-                    <button onclick="publishVideo()" class="bg-red-600 px-6 rounded-xl font-black text-sm">نشر</button>
-                    <input id="videoLinkInput" type="text" placeholder="رابط الفيديو..." class="flex-1 bg-black border border-white/10 p-4 rounded-xl text-xs text-right text-white outline-none focus:border-red-600">
-                </div>
-            </div>
-
-            <!-- 2. قسم الإحصائيات (الرسم البياني) -->
-            <div class="studio-card p-6 mb-6 text-right">
-                <h3 class="text-sm font-black mb-4">إحصائيات الأداء</h3>
-                <div class="h-40 w-full mb-4">
-                    <canvas id="viewsChart"></canvas>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[9px] text-zinc-500 font-bold mb-1 uppercase">إجمالي المشاهدات</p>
-                        <p id="totalViewsStat" class="text-xl font-black text-red-500">0</p>
-                    </div>
-                    <div class="bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <p class="text-[9px] text-zinc-500 font-bold mb-1 uppercase">فيديوهاتك</p>
-                        <p id="totalVidsStat" class="text-xl font-black text-white">0</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. قسم إدارة الفيديوهات (الحذف والتعديل) -->
-            <h3 class="text-sm font-black mb-4 text-right px-2">إدارة فيديوهاتك</h3>
-            <div id="studioVidsList" class="space-y-3"></div>
-        </div>
-    </div>
-
-    <!-- نافذة السحب -->
-    <div id="withdrawModal" class="fixed inset-0 bg-black/95 z-[10000] hidden flex items-center justify-center p-6">
-        <div class="bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10">
-            <h3 class="text-xl font-black mb-6 text-right italic text-red-600">طلب سحب 💸</h3>
-            <input id="withdrawWallet" type="text" placeholder="رقم الهاتف / المحفظة" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-3 text-right">
-            <input id="withdrawAmount" type="number" placeholder="المبلغ (Min 10$)" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-6 text-right">
-            <button onclick="submitWithdraw()" class="w-full bg-red-600 py-4 rounded-2xl font-black shadow-lg">تأكيد</button>
-            <button onclick="closeModal('withdrawModal')" class="w-full py-3 text-zinc-600 text-xs mt-2 text-center">إلغاء</button>
-        </div>
-    </div>
-
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-    <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBwWz2qN-S_G4XFp89W64V-L38iN1_p7S0",
-            authDomain: "tik-ton-92124.firebaseapp.com",
-            projectId: "tik-ton-92124",
-            storageBucket: "tik-ton-92124.appspot.com",
-            messagingSenderId: "367332766324",
-            appId: "1:367332766324:web:0f41334ec40ef03063806e"
+          apiKey: "AIzaSyALHoUPIxgCMW9o3CQ-Q0BhPPnxKTppMds",
+          authDomain: "pepe-d02d2.firebaseapp.com",
+          projectId: "pepe-d02d2",
+          storageBucket: "pepe-d02d2.firebasestorage.app",
+          messagingSenderId: "599166065199",
+          appId: "1:599166065199:web:0957e4b79846b2d44844da",
+          measurementId: "G-SK3Z514R9T"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
 
-        const tg = window.Telegram.WebApp;
-        const tgUser = tg.initDataUnsafe?.user || {};
-        const uID = String(tgUser.id || "7416599626");
-        const adminID = "7416599626";
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "pepe_royal_v1"; 
+        const ADMIN_ID = 7416599626;
 
-        let balance = 0, allVideos = [], swiper, players = {}, currentTimer = null;
-        let watchedVids = [], myVideos = [], viewsChart = null;
+        window.state = {
+            user: null,
+            clicks: 0,
+            target: 10,
+            reward: 5000,
+            refReward: 25000,
+            referralCode: ""
+        };
 
         async function init() {
-            const userRef = db.collection("users").doc(uID);
-            userRef.onSnapshot(doc => {
-                if(doc.exists) {
-                    const data = doc.data();
-                    balance = data.balance || 0;
-                    watchedVids = data.watchedVids || [];
-                    const bStr = `$${balance.toFixed(4)}`;
-                    document.getElementById('topBalance').innerText = bStr;
-                    document.getElementById('profileBalance').innerText = bStr;
-                    document.getElementById('userNameDisp').innerText = data.name;
-                    document.getElementById('userImg').src = data.img || "";
-                }
-            });
-
-            if(uID === adminID) document.getElementById('crownBtn').classList.remove('hidden');
-
-            db.collection("shared_videos").orderBy("createdAt", "desc").onSnapshot(snap => {
-                allVideos = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                myVideos = allVideos.filter(v => v.ownerId === uID);
-                renderHome();
-                if(document.getElementById('studioModal').style.display === 'block') updateStudioUI();
-            });
-            loadNotifs();
-            loadAdminTools();
-        }
-
-        function renderHome() {
-            const wrap = document.getElementById('videoWrapper');
-            wrap.innerHTML = allVideos.map((v, i) => `
-                <div class="swiper-slide relative">
-                    <div id="player-${i}" class="w-full h-full pointer-events-none"></div>
-                    <div class="absolute right-6 bottom-40 flex flex-col items-center gap-6 z-20">
-                        <img src="${v.ownerImg}" class="w-12 h-12 rounded-full border-2 border-red-600 object-cover">
-                        <button class="text-3xl">❤️</button>
-                    </div>
-                </div>`).join('');
-            if(swiper) swiper.destroy();
-            swiper = new Swiper(".swiper", { direction: "vertical", on: { slideChange: () => { stopAll(); startTimer(swiper.activeIndex); } } });
-            setTimeout(initPlayers, 500);
-        }
-
-        function initPlayers() {
-            allVideos.forEach((v, i) => {
-                players[i] = new YT.Player(`player-${i}`, {
-                    videoId: v.videoId,
-                    playerVars: { autoplay: i === 0 ? 1 : 0, controls: 0, playsinline: 1 },
-                    events: { onStateChange: (e) => { if(e.data === 1 && i === swiper.activeIndex) startTimer(i); } }
+            try {
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        window.state.user = user;
+                        setupSync(user.uid);
+                    }
                 });
-            });
+            } catch (e) { console.error(e); }
         }
 
-        function startTimer(i) {
-            if(currentTimer) clearInterval(currentTimer);
-            let sec = 0;
-            currentTimer = setInterval(async () => {
-                sec++;
-                if(sec >= 15) {
-                    clearInterval(currentTimer);
-                    const vid = allVideos[i];
-                    if(!watchedVids.includes(vid.id)) {
-                        await db.collection("users").doc(uID).update({
-                            balance: firebase.firestore.FieldValue.increment(0.0005),
-                            watchedVids: firebase.firestore.FieldValue.arrayUnion(vid.id)
-                        });
-                        await db.collection("shared_videos").doc(vid.id).update({ views: firebase.firestore.FieldValue.increment(1) });
-                    }
-                }
-            }, 1000);
-        }
+        async function setupSync(uid) {
+            const tg = window.Telegram.WebApp;
+            const tgUser = tg.initDataUnsafe?.user;
+            const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'data');
 
-        function stopAll() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); }
-
-        function openStudio() {
-            document.getElementById('studioModal').style.display = 'block';
-            updateStudioUI();
-            stopAll();
-        }
-
-        function updateStudioUI() {
-            const list = document.getElementById('studioVidsList');
-            list.innerHTML = '';
-            let totalVViews = 0;
-            const chartData = [];
-
-            myVideos.forEach(v => {
-                totalVViews += (v.views || 0);
-                chartData.push(v.views || 0);
-                list.innerHTML += `
-                    <div class="studio-card p-4 flex items-center justify-between border-none bg-zinc-900/40">
-                        <button onclick="deleteVideo('${v.id}')" class="text-red-500 bg-red-500/10 p-2 rounded-xl text-sm italic">حذف</button>
-                        <div class="flex-1 px-4 text-right">
-                            <p class="text-xs font-black text-white">المشاهدات: ${v.views || 0}</p>
-                            <p class="text-[8px] text-zinc-500">${v.videoId}</p>
-                        </div>
-                        <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-10 rounded-lg object-cover">
-                    </div>`;
-            });
-
-            document.getElementById('totalViewsStat').innerText = totalVViews;
-            document.getElementById('totalVidsStat').innerText = myVideos.length;
-            renderChart(chartData);
-        }
-
-        function renderChart(data) {
-            const ctx = document.getElementById('viewsChart').getContext('2d');
-            if(viewsChart) viewsChart.destroy();
-            viewsChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map((_, i) => i + 1),
-                    datasets: [{
-                        label: 'المشاهدات',
-                        data: data,
-                        borderColor: '#dc2626',
-                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        x: { display: false },
-                        y: { display: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#555', font: { size: 8 } } }
-                    }
-                }
-            });
-        }
-
-        async function publishVideo() {
-            const url = document.getElementById('videoLinkInput').value;
-            const vId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-            if(!vId || vId.length < 5) return alert("الرابط غير صحيح!");
-            await db.collection("shared_videos").add({
-                videoId: vId, ownerId: uID, ownerImg: tgUser.photo_url || "", 
-                likes: 0, views: 0, createdAt: new Date()
-            });
-            document.getElementById('videoLinkInput').value = '';
-            alert("تم النشر بنجاح!");
-        }
-
-        async function deleteVideo(id) {
-            if(confirm("حذف الفيديو؟")) {
-                await db.collection("shared_videos").doc(id).delete();
-                alert("تم الحذف.");
+            if (tgUser && tgUser.id === ADMIN_ID) {
+                document.getElementById('nav-admin').classList.remove('hidden');
             }
-        }
 
-        function switchTab(t) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(t + 'Page').classList.add('active');
-            if(event) event.currentTarget.classList.add('active');
-            stopAll();
-        }
-
-        function loadNotifs() {
-            db.collection("users").doc(uID).collection("notifs").orderBy("createdAt", "desc").onSnapshot(snap => {
-                const list = document.getElementById('notifList');
-                const badge = document.getElementById('notifBadge');
-                list.innerHTML = '';
-                if(snap.size > 0) { badge.innerText = snap.size; badge.classList.remove('hidden'); }
-                else badge.classList.add('hidden');
-                snap.forEach(d => list.innerHTML += `<div class="bg-zinc-900/60 p-4 rounded-2xl border-r-4 border-red-600 text-[10px] font-bold text-right">${d.data().message}</div>`);
+            onSnapshot(userRef, (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.isBanned) {
+                        document.body.innerHTML = "<div class='h-screen flex items-center justify-center bg-[#050805] text-red-500 font-black p-10 text-center'>حسابك محظور.</div>";
+                        return;
+                    }
+                    window.state.referralCode = data.myRefCode || "";
+                    document.getElementById('bal-top').innerText = (data.balance || 0).toLocaleString();
+                    document.getElementById('bal-wallet').innerText = (data.balance || 0).toLocaleString();
+                    document.getElementById('ref-link').innerText = `https://t.me/YOUR_BOT?start=${data.myRefCode}`;
+                    document.getElementById('ref-count').innerText = data.referralsCount || 0;
+                } else {
+                    const myCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    setDoc(userRef, {
+                        balance: 0,
+                        id: tgUser?.id || 0,
+                        username: tgUser?.username || "Guest",
+                        isBanned: false,
+                        myRefCode: myCode,
+                        referralsCount: 0,
+                        joinedAt: new Date().toISOString()
+                    });
+                }
             });
         }
 
-        async function submitWithdraw() {
-            const wallet = document.getElementById('withdrawWallet').value;
-            const amount = parseFloat(document.getElementById('withdrawAmount').value);
-            if(!wallet || isNaN(amount) || amount < 10 || amount > balance) return alert("خطأ في البيانات أو الرصيد");
-            await db.collection("withdrawals").add({ uID, userName: tgUser.first_name, amount, wallet, status: 'pending', createdAt: new Date() });
-            await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(-amount) });
-            alert("تم إرسال الطلب!");
-            closeModal('withdrawModal');
-        }
+        window.copyRef = () => {
+            const link = document.getElementById('ref-link').innerText;
+            const el = document.createElement('textarea');
+            el.value = link;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            window.Telegram.WebApp.showPopup({ message: "تم نسخ رابط الإحالة! 🔗" });
+        };
 
-        function loadAdminTools() {
-            db.collection("withdrawals").where("status", "==", "pending").onSnapshot(snap => {
-                const list = document.getElementById('adminWithdrawalsList');
-                list.innerHTML = '<h3 class="font-black text-red-500 mb-4 text-xs italic underline">طلبات السحب</h3>';
-                snap.forEach(d => {
-                    const w = d.data();
-                    list.innerHTML += `<div class="studio-card p-4 space-y-3">
-                        <div class="flex justify-between text-[11px] font-black italic"><span>$${w.amount}</span><span>${w.userName}</span></div>
-                        <div class="flex gap-2">
-                            <button onclick="adminAction('${d.id}', '${w.uID}', 'rejected')" class="flex-1 bg-zinc-800 py-2 rounded-xl text-[10px] font-bold">رفض</button>
-                            <button onclick="adminAction('${d.id}', '${w.uID}', 'completed')" class="flex-1 bg-red-600 py-2 rounded-xl text-[10px] font-black">دفع ✅</button>
-                        </div>
-                    </div>`;
-                });
+        window.runAdminAction = async (type) => {
+            const targetId = document.getElementById('adm-id').value;
+            const val = parseInt(document.getElementById('adm-val').value) || 0;
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'users'));
+            let foundUid = null;
+            for (const d of snap.docs) {
+                const p = await getDoc(doc(db, 'artifacts', appId, 'users', d.id, 'profile', 'data'));
+                if(p.exists() && p.data().id == targetId) { foundUid = d.id; break; }
+            }
+            if(!foundUid) return alert("خطأ");
+            const ref = doc(db, 'artifacts', appId, 'users', foundUid, 'profile', 'data');
+            if(type === 'add') await updateDoc(ref, { balance: increment(val) });
+            if(type === 'ban') await updateDoc(ref, { isBanned: true });
+            if(type === 'unban') await updateDoc(ref, { isBanned: false });
+            alert("تم");
+        };
+
+        window.onload = () => { init(); logic(); };
+
+        function logic() {
+            const tg = window.Telegram.WebApp;
+            const coin = document.getElementById('coin');
+            const bar = document.getElementById('bar');
+            const btn = document.getElementById('claim');
+
+            coin.onclick = (e) => {
+                if (window.state.clicks < window.state.target) {
+                    window.state.clicks++;
+                    bar.style.width = (window.state.clicks * 10) + "%";
+                    
+                    // تأثير بصري عند اللمس
+                    const rect = coin.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const ripple = document.createElement('span');
+                    ripple.style.left = `${x}px`; ripple.style.top = `${y}px`;
+                    ripple.className = "absolute w-4 h-4 bg-green-400 rounded-full animate-ping pointer-events-none";
+                    coin.parentElement.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 500);
+
+                    if (window.state.clicks >= 10) {
+                        btn.classList.remove('hidden');
+                        coin.style.filter = "grayscale(1) brightness(0.5)";
+                    }
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                }
+            };
+
+            btn.onclick = () => {
+                tg.openLink("https://www.google.com"); 
+                document.getElementById('ad-wait').classList.remove('hidden');
+                let s = 8;
+                const t = setInterval(async () => {
+                    s--;
+                    document.getElementById('timer').innerText = s;
+                    if(s <= 0) {
+                        clearInterval(t);
+                        document.getElementById('ad-wait').classList.add('hidden');
+                        const r = doc(db, 'artifacts', appId, 'users', window.state.user.uid, 'profile', 'data');
+                        await updateDoc(r, { balance: increment(window.state.reward) });
+                        window.state.clicks = 0;
+                        bar.style.width = "0%";
+                        btn.classList.add('hidden');
+                        coin.style.filter = "none";
+                        tg.showPopup({ message: "تم كسب 5,000 PEPE!" });
+                    }
+                }, 1000);
+            };
+
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.onclick = () => {
+                    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+                    document.getElementById(n.dataset.view).classList.remove('hidden');
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.add('opacity-40'));
+                    n.classList.remove('opacity-40');
+                };
             });
         }
-
-        async function adminAction(dId, uId, status) {
-            await db.collection("withdrawals").doc(dId).update({ status });
-            const msg = status === 'completed' ? "✅ تم قبول طلب سحبك!" : "❌ تم رفض طلب سحبك.";
-            await db.collection("users").doc(uId).collection("notifs").add({ message: msg, createdAt: new Date() });
-            alert("تم!");
-        }
-
-        function openModal(m) { document.getElementById(m).classList.remove('hidden'); }
-        function closeModal(m) { document.getElementById(m).classList.add('hidden'); }
-
-        window.onload = init;
     </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background: radial-gradient(circle at top, #0a1a0a 0%, #050805 100%); color: white; user-select: none; margin: 0; overflow: hidden; }
+        .page { height: 100vh; padding-bottom: 120px; display: flex; flex-direction: column; overflow-y: auto; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .green-glow { text-shadow: 0 0 15px rgba(34, 197, 94, 0.5); }
+        .coin-shadow { filter: drop-shadow(0 0 30px rgba(34, 197, 94, 0.2)); }
+        input { background: rgba(0,0,0,0.5); border: 1px solid #1a1a1a; padding: 14px; border-radius: 18px; width: 100%; margin-bottom: 12px; color: white; outline: none; }
+        .nav-active { opacity: 1 !important; color: #22c55e; }
+    </style>
+</head>
+<body class="h-screen">
+
+    <header class="p-5 flex justify-between items-center z-50 relative">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Cloud Status: <span class="text-green-500">Live</span></span>
+        </div>
+        <div class="glass px-5 py-2 rounded-2xl border border-green-500/20 shadow-lg">
+            <span id="bal-top" class="text-2xl font-black font-mono green-glow">0</span>
+            <span class="text-[10px] text-green-500 font-bold mr-1">PEPE</span>
+        </div>
+    </header>
+
+    <main class="relative flex-1">
+        <!-- Mine Page -->
+        <section id="mine" class="page items-center justify-center p-6 gap-8">
+            <div class="text-center">
+                <h1 class="text-5xl font-black italic tracking-tighter mb-1">PEPE ROYAL</h1>
+                <div class="h-[2px] w-20 bg-green-500 mx-auto rounded-full"></div>
+            </div>
+            
+            <div class="relative group">
+                <div class="absolute inset-0 bg-green-500/20 blur-[100px] rounded-full scale-150 transition-all group-active:bg-green-500/40"></div>
+                <img src="https://g.top4top.io/s_3747ccek80.jpg" id="coin" class="w-72 h-72 rounded-full border-[6px] border-green-500/10 coin-shadow relative z-10 cursor-pointer transition-transform active:scale-95 duration-75" alt="Pepe">
+            </div>
+
+            <div class="w-full max-w-xs space-y-3">
+                <div class="flex justify-between items-end px-1">
+                    <span class="text-[10px] font-black text-gray-500 uppercase">Power Reserve</span>
+                    <span id="counter" class="text-xs font-black text-green-500 font-mono">Tap to start</span>
+                </div>
+                <div class="h-4 w-full bg-black/50 rounded-full p-1 border border-white/5 shadow-inner">
+                    <div id="bar" class="h-full w-0 bg-gradient-to-r from-green-600 to-green-400 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)] transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <button id="claim" class="hidden w-full max-w-xs py-5 bg-green-500 text-black font-black rounded-[25px] shadow-[0_10px_30px_rgba(34,197,94,0.3)] animate-bounce text-lg uppercase">
+                Claim Reward +5K
+            </button>
+        </section>
+
+        <!-- Wallet Page -->
+        <section id="wallet" class="page hidden p-8 pt-12 items-center">
+            <div class="w-full glass p-10 rounded-[50px] text-center shadow-2xl">
+                <div class="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-wallet text-3xl text-green-500"></i>
+                </div>
+                <p class="text-xs text-gray-500 font-bold mb-2 uppercase tracking-widest">Total Earnings</p>
+                <h2 id="bal-wallet" class="text-6xl font-black font-mono mb-10 green-glow">0</h2>
+                <div class="grid grid-cols-1 gap-3">
+                    <button class="w-full py-5 bg-white/5 border border-white/10 rounded-3xl font-black text-gray-400 cursor-not-allowed">WITHDRAW (SOON)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Friends Page (الاحالة) -->
+        <section id="friends" class="page hidden p-8 pt-12">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black mb-2">دعوة الأصدقاء</h2>
+                <p class="text-sm text-gray-500">اكسب 25,000 PEPE عن كل صديق ينضم عبر رابطك!</p>
+            </div>
+
+            <div class="glass p-6 rounded-[35px] mb-6">
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <span class="text-xs font-bold text-gray-400">إجمالي الأصدقاء</span>
+                    <span id="ref-count" class="text-2xl font-black text-green-500 font-mono">0</span>
+                </div>
+                <div class="bg-black/50 p-4 rounded-2xl border border-white/5 break-all text-[10px] text-green-400 font-mono mb-4" id="ref-link">
+                    Loading referral link...
+                </div>
+                <button onclick="copyRef()" class="w-full py-4 bg-green-500 text-black font-black rounded-2xl shadow-lg">نسخ رابط الدعوة</button>
+            </div>
+
+            <div class="space-y-3">
+                <div class="glass p-5 rounded-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500"><i class="fas fa-user-plus"></i></div>
+                        <div><p class="text-sm font-black">دعوة 10 أصدقاء</p><p class="text-[10px] text-gray-500">مكافأة 250,000</p></div>
+                    </div>
+                    <i class="fas fa-lock text-gray-700"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Page -->
+        <section id="admin" class="page hidden p-8 pt-12">
+            <h2 class="text-2xl font-black text-yellow-500 mb-6 flex items-center gap-3">
+                <i class="fas fa-crown"></i> Control Panel
+            </h2>
+            <div class="glass p-8 rounded-[40px] space-y-4">
+                <input type="number" id="adm-id" placeholder="User Telegram ID">
+                <input type="number" id="adm-val" placeholder="Amount to Add">
+                <button onclick="runAdminAction('add')" class="w-full bg-green-600 py-4 rounded-2xl font-black shadow-lg">تحديث الرصيد</button>
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="runAdminAction('ban')" class="bg-red-900/40 border border-red-500/20 py-4 rounded-2xl font-black text-red-500 uppercase text-xs">Ban</button>
+                    <button onclick="runAdminAction('unban')" class="bg-gray-800 py-4 rounded-2xl font-black text-gray-400 uppercase text-xs">Unban</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Navbar -->
+    <nav class="fixed bottom-8 left-8 right-8 glass rounded-[40px] p-2 flex justify-around items-center z-50 border border-white/10 shadow-2xl">
+        <button data-view="mine" class="nav-item p-4 text-xl"><i class="fas fa-bolt"></i></button>
+        <button data-view="friends" class="nav-item p-4 opacity-40 text-xl"><i class="fas fa-users"></i></button>
+        <button data-view="wallet" class="nav-item p-4 opacity-40 text-xl"><i class="fas fa-wallet"></i></button>
+        <button id="nav-admin" data-view="admin" class="nav-item hidden opacity-40 p-4 text-xl text-yellow-500"><i class="fas fa-shield-alt"></i></button>
+    </nav>
+
+    <!-- Overlay Loader -->
+    <div id="ad-wait" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl hidden flex flex-col items-center justify-center p-12">
+        <div class="relative">
+            <div class="w-24 h-24 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin"></div>
+            <div id="timer" class="absolute inset-0 flex items-center justify-center text-3xl font-black text-green-500 font-mono">8</div>
+        </div>
+        <p class="mt-10 text-xs font-black text-gray-500 tracking-[0.3em] uppercase">Securing Pepe Assets</p>
+    </div>
+
 </body>
 </html>
