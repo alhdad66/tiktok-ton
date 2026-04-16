@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منصة العرض - عبود برو</title>
+    <title>منصة عبود برو - الإدارة الكاملة</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -15,64 +15,56 @@
         body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Cairo', sans-serif; color: white; overflow: hidden; }
         .swiper { width: 100%; height: 100vh; }
         .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(10,10,10,0.95); display: flex; justify-content: space-around; align-items: center; padding: 10px 0; z-index: 10000; border-top: 1px solid #222; backdrop-filter: blur(10px); }
-        .page { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px; }
+        .page { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 120px; }
         .active-page { display: flex !important; }
         .timer-badge { position: absolute; top: 110px; left: 20px; background: #dc2626; padding: 8px 15px; border-radius: 50px; z-index: 1000; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
-        iframe { width: 100% !important; height: 100% !important; pointer-events: none; }
-        .profile-tab, .admin-tab { border-bottom: 3px solid transparent; opacity: 0.4; padding: 12px 0; transition: 0.3s; cursor: pointer; font-weight: 900; font-size: 0.85rem; }
-        .profile-tab.active, .admin-tab.active { border-bottom: 3px solid #dc2626; opacity: 1; color: #dc2626; }
-        .reward-popup { position: fixed; left: 50%; top: 50%; color: #4ade80; font-weight: 900; font-size: 2.5rem; z-index: 20000; pointer-events: none; animation: floatUp 2s forwards; }
-        @keyframes floatUp { 0% { opacity:0; transform: translate(-50%, 20px); } 20% { opacity:1; transform: translate(-50%, -20px); } 100% { opacity:0; transform: translate(-50%, -120px); } }
-        
-        /* Withdraw Modal */
+        .admin-tab { border-bottom: 3px solid transparent; opacity: 0.4; padding: 12px 0; transition: 0.3s; cursor: pointer; font-weight: 900; font-size: 0.75rem; white-space: nowrap; }
+        .admin-tab.active { border-bottom: 3px solid #dc2626; opacity: 1; color: #dc2626; }
         .w-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 30000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
         .w-box { background: #111; width: 100%; max-width: 380px; border-radius: 30px; border: 1px solid #222; padding: 30px; }
+        .like-btn.active { color: #dc2626; transform: scale(1.2); }
+        iframe { width: 100% !important; height: 100% !important; pointer-events: auto; }
+        .video-card { background: #111; border-radius: 20px; border: 1px solid #222; padding: 10px; display: flex; align-items: center; gap: 12px; }
     </style>
 </head>
 <body>
 
-    <!-- Banned Screen -->
-    <div id="bannedScreen" class="fixed inset-0 bg-black z-[99999] hidden flex flex-col items-center justify-center text-center p-10">
+    <!-- الشاشة المحظورة -->
+    <div id="bannedScreen" class="fixed inset-0 bg-black z-[99999] hidden flex flex-col items-center justify-center text-center p-10 text-white">
         <h1 class="text-6xl mb-4">🚫</h1>
         <h2 class="text-3xl font-black text-red-600 mb-2">لقد تم حظرك!</h2>
         <p class="text-zinc-500 font-bold">حسابك منتهك لقوانين المنصة.</p>
     </div>
 
-    <!-- Top Balance -->
+    <!-- الرصيد العلوي -->
     <div class="fixed top-8 left-6 right-6 z-[11000] flex justify-between items-center pointer-events-none">
         <div class="bg-zinc-900/95 px-5 py-2.5 rounded-full border border-white/5 pointer-events-auto flex items-center gap-3">
             <span id="mainBal" class="text-red-500 font-black text-lg">$0.0000</span>
             <div class="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_#dc2626]"></div>
         </div>
-        <div id="adminBtn" onclick="switchTab('admin')" class="hidden bg-zinc-900/95 p-3 rounded-full border border-white/5 cursor-pointer pointer-events-auto active:scale-90 transition-transform">
+        <div id="adminBtn" onclick="switchTab('admin')" class="hidden bg-zinc-900/95 p-3 rounded-full border border-white/5 cursor-pointer pointer-events-auto active:scale-90 transition-transform shadow-lg shadow-red-600/20">
             <span class="text-xl font-black">👑</span>
         </div>
     </div>
 
-    <!-- Pages -->
+    <!-- صفحة الفيديوهات -->
     <div id="homePage" class="page active-page !p-0">
         <div id="videoTimer" class="timer-badge hidden">
             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
             <span id="timerText" class="font-black text-xs text-white">10s</span>
         </div>
-        <div class="swiper mySwiper"><div class="swiper-wrapper" id="videoWrapper"></div></div>
+        <div class="swiper mySwiper">
+            <div class="swiper-wrapper" id="videoWrapper"></div>
+        </div>
     </div>
 
+    <!-- صفحة الإحصائيات والنشر -->
     <div id="statsPage" class="page p-6 pt-24 text-right">
         <div class="bg-zinc-900/40 p-5 rounded-[2.5rem] border border-white/5 mb-6">
             <canvas id="tradingChart" style="max-height: 180px;"></canvas>
         </div>
-        <div class="grid grid-cols-2 gap-4 mb-8 text-center">
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5">
-                <p class="text-[9px] text-zinc-500 font-black uppercase">المشاهدات</p>
-                <h4 id="totalViews" class="text-2xl font-black text-red-500">0</h4>
-            </div>
-            <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5">
-                <p class="text-[9px] text-zinc-500 font-black uppercase">التفاعل</p>
-                <h4 id="totalLikes" class="text-2xl font-black text-red-500">0</h4>
-            </div>
-        </div>
-        <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-6 text-right">
+        <div class="bg-red-600/5 p-6 rounded-[2.5rem] border border-red-600/20 mb-6">
+            <p class="text-xs font-black mb-3 text-red-500">انشر فيديو يوتيوب جديد</p>
             <div class="flex gap-2">
                 <input id="ytInput" type="text" placeholder="رابط فيديو يوتيوب..." class="flex-1 bg-black/50 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-red-600 text-right">
                 <button onclick="handlePublish()" class="bg-red-600 px-6 rounded-2xl font-black text-sm">نشر</button>
@@ -81,111 +73,111 @@
         <div id="myVideosList" class="space-y-3 pb-10"></div>
     </div>
 
+    <!-- صفحة المهام -->
     <div id="tasksPage" class="page p-6 pt-24 text-right">
-        <h2 class="text-3xl font-black mb-2 italic">المهام 📋</h2>
+        <h2 class="text-3xl font-black mb-6 italic">المهام اليومية 📋</h2>
         <div id="userTasksList" class="space-y-3 pb-10"></div>
     </div>
 
+    <!-- صفحة الإشعارات -->
     <div id="notifsPage" class="page p-6 pt-24 text-right">
-        <h2 class="text-3xl font-black mb-6 italic">الإشعارات 🔔</h2>
+        <h2 class="text-3xl font-black mb-6 italic text-red-600">الإشعارات 🔔</h2>
         <div id="notifsList" class="space-y-3"></div>
     </div>
 
+    <!-- البروفايل -->
     <div id="profilePage" class="page !p-0">
         <div class="pt-24 pb-10 text-center bg-gradient-to-b from-red-900/20 to-black">
             <div class="w-24 h-24 mx-auto mb-4 p-1 border-2 border-red-600 rounded-full overflow-hidden">
-                <img id="uProfImg" src="" class="w-full h-full object-cover">
+                <img id="uProfImg" src="https://i.ibb.co/vz6V0vD/default-user.png" class="w-full h-full object-cover">
             </div>
             <h2 id="uProfName" class="text-2xl font-black italic">...</h2>
-            <div class="flex justify-center gap-10 my-6">
-                <div class="text-center"><p id="uVidsCount" class="text-xl font-black">0</p><p class="text-[9px] text-zinc-500 uppercase">فيديو</p></div>
-                <div class="text-center"><p id="uFollsCount" class="text-xl font-black">0</p><p class="text-[9px] text-zinc-500 uppercase">متابع</p></div>
+            <div class="px-10 mt-6">
+                <button id="withdrawBtn" onclick="openWithdrawModal()" class="w-full bg-white text-black py-4 rounded-2xl font-black text-xs hidden shadow-xl">سحب الأرباح 💸</button>
             </div>
-            <div class="px-10 flex flex-col gap-3">
-                <button id="withdrawBtn" onclick="openWithdrawModal()" class="w-full bg-white text-black py-4 rounded-2xl font-black text-xs hidden">سحب الأرباح 💸</button>
-                <button id="followBtn" class="w-full bg-red-600 py-4 rounded-2xl font-black text-xs">متابعة</button>
-            </div>
-        </div>
-        <div class="flex border-b border-white/5">
-            <div id="tabMy" class="profile-tab active flex-1 text-center font-black">فيديوهاتي</div>
-            <div id="tabLiked" class="profile-tab flex-1 text-center font-black">أعجبتني</div>
         </div>
         <div class="grid grid-cols-3 gap-0.5 mt-0.5 pb-20" id="profileGrid"></div>
     </div>
 
-    <!-- Admin Panel -->
+    <!-- لوحة التحكم (الأدمن) -->
     <div id="adminPage" class="page !p-0">
         <div class="pt-24 px-6">
-            <h2 class="text-2xl font-black text-red-600 italic mb-4 text-right">لوحة التحكم 👑</h2>
-            <div class="flex border-b border-white/10 mb-6">
-                <div id="admTabFin" onclick="setAdminTab('financial')" class="admin-tab active flex-1 text-center font-black">المالية والمهام</div>
-                <div id="admTabUsers" onclick="setAdminTab('users')" class="admin-tab flex-1 text-center font-black">الأعضاء والحظر</div>
+            <div class="flex border-b border-white/10 mb-6 overflow-x-auto gap-4 no-scrollbar">
+                <div onclick="setAdminTab('users')" id="admTabUsers" class="admin-tab active flex-1 text-center font-black">👤 الأعضاء</div>
+                <div onclick="setAdminTab('vids')" id="admTabVids" class="admin-tab flex-1 text-center font-black">🎬 الفيديوهات</div>
+                <div onclick="setAdminTab('financial')" id="admTabFin" class="admin-tab flex-1 text-center font-black">🛠️ السحب والمهام</div>
             </div>
 
-            <!-- Financial Section -->
-            <div id="adminFinancialSection" class="space-y-8 pb-20">
-                <div class="bg-zinc-900/40 p-5 rounded-3xl border border-blue-600/20">
-                    <h3 class="text-sm font-black mb-4 text-blue-400 text-right">⚙️ إعدادات السحب</h3>
-                    <div id="adminMethodsConfig" class="space-y-3"></div>
-                </div>
-                <div class="bg-zinc-900/40 p-5 rounded-3xl border border-green-600/20">
-                    <h3 class="text-sm font-black mb-4 text-green-400 text-right">💸 طلبات السحب المعلقة</h3>
-                    <div id="adminWithdrawalsList" class="space-y-3"></div>
-                </div>
-                <div class="bg-zinc-900/40 p-5 rounded-3xl border border-purple-600/20">
-                    <h3 class="text-sm font-black mb-4 text-purple-400 text-right">✨ إضافة مهمة جديدة</h3>
-                    <div class="space-y-2">
-                        <input id="taskTitle" type="text" placeholder="اسم المهمة" class="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-xs text-right">
-                        <input id="taskLink" type="text" placeholder="الرابط" class="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-xs text-right">
-                        <input id="taskReward" type="number" step="0.0001" placeholder="المكافأة $" class="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-xs text-right">
-                        <button onclick="addNewTask()" class="w-full bg-purple-600 py-3 rounded-xl font-black text-xs text-white">نشر المهمة</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Users Section -->
-            <div id="adminUsersSection" class="hidden space-y-4 pb-20">
-                <div class="flex gap-2">
-                   <input id="userSearch" oninput="filterUsers()" type="text" placeholder="بحث عن مستخدم بالاسم..." class="flex-1 bg-zinc-900 border border-white/10 p-3 rounded-xl text-xs text-right">
+            <!-- قسم الأعضاء -->
+            <div id="adminUsersSection" class="space-y-4 pb-20">
+                <div class="bg-zinc-900/60 p-4 rounded-2xl border border-white/5 mb-4">
+                    <input id="userSearch" oninput="filterUsers()" type="text" placeholder="بحث باسم المستخدم..." class="w-full bg-transparent text-xs text-right outline-none">
                 </div>
                 <div id="adminUsersList" class="space-y-3"></div>
+            </div>
+
+            <!-- قسم إدارة الفيديوهات -->
+            <div id="adminVidsSection" class="hidden space-y-4 pb-20">
+                <p class="text-[10px] text-zinc-500 font-bold text-right mb-4">جميع الفيديوهات المنشورة على المنصة:</p>
+                <div id="adminAllVidsList" class="space-y-3"></div>
+            </div>
+
+            <!-- قسم المالية والمهام -->
+            <div id="adminFinancialSection" class="hidden space-y-8 pb-20 text-right">
+                <div class="bg-zinc-900/40 p-5 rounded-3xl border border-red-600/20">
+                    <h3 class="text-sm font-black mb-4 text-red-500">🛠️ إضافة طريقة سحب</h3>
+                    <div class="space-y-2 mb-4">
+                        <input id="newMethodName" type="text" placeholder="اسم الطريقة (مثلاً: تداول)" class="w-full bg-black border border-white/10 p-3 rounded-xl text-xs text-right">
+                        <input id="newMethodMin" type="number" placeholder="الحد الأدنى للسحب $" class="w-full bg-black border border-white/10 p-3 rounded-xl text-xs text-right">
+                        <button onclick="addWithdrawMethod()" class="w-full bg-red-600 py-3 rounded-xl font-black text-xs">إضافة الطريقة</button>
+                    </div>
+                    <div id="adminMethodsList" class="space-y-2 border-t border-white/5 pt-4"></div>
+                </div>
+                <div class="bg-zinc-900/40 p-5 rounded-3xl border border-purple-600/20">
+                    <h3 class="text-sm font-black mb-4 text-purple-400">✨ إضافة مهمة جديدة</h3>
+                    <div class="space-y-2">
+                        <input id="taskTitle" type="text" placeholder="عنوان المهمة" class="w-full bg-black border border-white/10 p-3 rounded-xl text-xs text-right">
+                        <input id="taskLink" type="text" placeholder="الرابط" class="w-full bg-black border border-white/10 p-3 rounded-xl text-xs text-right">
+                        <input id="taskReward" type="number" step="0.0001" placeholder="المكافأة $" class="w-full bg-black border border-white/10 p-3 rounded-xl text-xs text-right">
+                        <button onclick="addNewTask()" class="w-full bg-purple-600 py-3 rounded-xl font-black text-xs">نشر المهمة</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- User Withdraw Modal -->
+    <!-- نافذة السحب -->
     <div id="withdrawModal" class="w-modal text-right">
         <div id="w-step-1" class="w-box">
-            <h3 class="text-xl font-black mb-2">سحب الأرباح 💰</h3>
+            <h3 class="text-xl font-black mb-4 text-white">اختر وسيلة السحب 💰</h3>
             <div id="userMethodsList" class="space-y-3 mb-6"></div>
             <button onclick="closeWithdrawModal()" class="w-full bg-zinc-800 py-4 rounded-2xl font-black text-xs text-white">إلغاء</button>
         </div>
         <div id="w-step-2" class="w-box hidden">
-            <h3 id="selMethodName" class="text-xl font-black mb-4 text-red-500 text-right">...</h3>
-            <input id="wAmount" type="number" placeholder="المبلغ $" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-3 text-right">
-            <input id="wWallet" type="text" placeholder="رقم المحفظة / الهاتف" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-6 text-right">
+            <h3 id="selMethodName" class="text-xl font-black mb-4 text-red-500 text-white">...</h3>
+            <input id="wAmount" type="number" placeholder="المبلغ $" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-3 text-right text-white">
+            <input id="wWallet" type="text" placeholder="رقم المحفظة / الحساب" class="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs mb-6 text-right text-white">
             <div class="flex gap-2">
                 <button onclick="backToMethods()" class="flex-1 bg-zinc-800 py-4 rounded-2xl font-black text-xs text-white">رجوع</button>
-                <button onclick="submitWithdrawRequest()" class="flex-1 bg-red-600 py-4 rounded-2xl font-black text-xs text-white">تأكيد</button>
+                <button onclick="submitWithdrawRequest()" class="flex-1 bg-red-600 py-4 rounded-2xl font-black text-xs text-white">إرسال الطلب</button>
             </div>
         </div>
     </div>
 
-    <!-- Navigation Bar -->
+    <!-- شريط التنقل -->
     <div class="nav-bar">
-        <div onclick="switchTab('home')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">🏠</div>
-        <div onclick="switchTab('tasks')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">📋</div>
-        <div onclick="switchTab('stats')" class="bg-red-600 w-14 h-10 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg cursor-pointer">+</div>
-        <div onclick="switchTab('notifs')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">🔔</div>
-        <div onclick="switchTab('profile_self')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer">👤</div>
+        <div onclick="switchTab('home')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer transition-all">🏠</div>
+        <div onclick="switchTab('tasks')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer transition-all">📋</div>
+        <div onclick="switchTab('stats')" class="bg-red-600 w-14 h-10 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg cursor-pointer active:scale-95 transition-transform">+</div>
+        <div onclick="switchTab('notifs')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer transition-all">🔔</div>
+        <div onclick="switchTab('profile_self')" class="text-2xl opacity-40 hover:opacity-100 p-2 cursor-pointer transition-all">👤</div>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <script>
-        // Firebase Config
-        const config = {
+        const firebaseConfig = {
             apiKey: "AIzaSyBwWz2qN-S_G4XFp89W64V-L38iN1_p7S0",
             authDomain: "tik-ton-92124.firebaseapp.com",
             projectId: "tik-ton-92124",
@@ -193,140 +185,89 @@
             messagingSenderId: "367332766324",
             appId: "1:367332766324:web:0f41334ec40ef03063806e"
         };
-        firebase.initializeApp(config);
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // User Setup
         const tg = window.Telegram.WebApp;
         const uID = String(tg.initDataUnsafe?.user?.id || "7416599626");
-        const userName = tg.initDataUnsafe?.user?.first_name || "مستخدم مجهول";
+        const userName = tg.initDataUnsafe?.user?.first_name || "عبود برو";
         const userImg = tg.initDataUnsafe?.user?.photo_url || "https://i.ibb.co/vz6V0vD/default-user.png";
         const adminID = "7416599626";
 
         let allVideos = [], swiper, players = {}, balance = 0, currentTimer = null;
-        let myLikes = [], watchedVids = [], completedTasks = [], activeProfileID = null;
-        let methodsData = {}, selectedMethodKey = null, allUsers = [];
+        let myLikes = [], watchedVids = [], completedTasks = [], allUsers = [], withdrawMethods = [];
 
         async function init() {
             const userRef = db.collection("users").doc(uID);
             const userDoc = await userRef.get();
             
-            if(userDoc.exists && userDoc.data().isBanned) { 
-                document.getElementById('bannedScreen').classList.remove('hidden'); 
-                return; 
-            }
-            
             if(!userDoc.exists) { 
                 await userRef.set({ 
                     name: userName, img: userImg, balance: 0.0, 
                     likedVids: [], watchedVids: [], completedTasks: [], 
-                    isBanned: false, createdAt: new Date() 
+                    isBanned: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() 
                 }); 
+            } else if(userDoc.data().isBanned) { 
+                document.getElementById('bannedScreen').classList.remove('hidden'); 
+                return; 
             }
             
             userRef.onSnapshot(d => { 
                 if(d.exists) { 
-                    balance = d.data().balance || 0; 
+                    const data = d.data();
+                    balance = data.balance || 0; 
                     document.getElementById('mainBal').innerText = `$${balance.toFixed(4)}`; 
-                    myLikes = d.data().likedVids || []; 
-                    watchedVids = d.data().watchedVids || []; 
-                    completedTasks = d.data().completedTasks || []; 
-                }
-            });
-
-            // Settings Listeners
-            db.collection("settings").doc("withdraw_methods").onSnapshot(doc => {
-                if(doc.exists) { 
-                    methodsData = doc.data(); 
-                    renderUserMethods(); 
-                    if(uID === adminID) renderAdminMethodsConfig(); 
-                } else {
-                    db.collection("settings").doc("withdraw_methods").set({
-                        m1: {name:'ليبيانا', min:10, icon:'📞'},
-                        m2: {name:'المدار', min:10, icon:'📡'},
-                        m3: {name:'بايننس', min:5, icon:'🟡'}
-                    });
+                    myLikes = data.likedVids || []; 
+                    watchedVids = data.watchedVids || []; 
+                    completedTasks = data.completedTasks || []; 
                 }
             });
 
             if(uID === adminID) {
                 document.getElementById('adminBtn').classList.remove('hidden');
-                loadAdminFullData();
+                loadAdminData();
             }
 
             db.collection("shared_videos").orderBy("createdAt", "desc").onSnapshot(snap => {
                 allVideos = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
                 renderHome();
-                renderStats();
                 renderMyVideosList();
+                if(uID === adminID) renderAdminVidsList();
+            });
+
+            db.collection("withdraw_methods").onSnapshot(snap => {
+                withdrawMethods = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                renderUserWithdrawMethods();
+                if(uID === adminID) renderAdminMethods();
             });
 
             loadTasks();
+            renderChart();
         }
 
-        // --- Admin UI Tabs ---
+        // --- وظائف الأدمن المتطورة ---
         function setAdminTab(tab) {
             document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('adminFinancialSection').classList.add('hidden');
             document.getElementById('adminUsersSection').classList.add('hidden');
+            document.getElementById('adminFinancialSection').classList.add('hidden');
+            document.getElementById('adminVidsSection').classList.add('hidden');
             
-            if(tab === 'financial') {
-                document.getElementById('admTabFin').classList.add('active');
-                document.getElementById('adminFinancialSection').classList.remove('hidden');
-            } else {
+            if(tab === 'users') {
                 document.getElementById('admTabUsers').classList.add('active');
                 document.getElementById('adminUsersSection').classList.remove('hidden');
+            } else if(tab === 'vids') {
+                document.getElementById('admTabVids').classList.add('active');
+                document.getElementById('adminVidsSection').classList.remove('hidden');
+            } else {
+                document.getElementById('admTabFin').classList.add('active');
+                document.getElementById('adminFinancialSection').classList.remove('hidden');
             }
         }
 
-        // --- Admin Financial Actions ---
-        function renderAdminMethodsConfig() {
-            const cont = document.getElementById('adminMethodsConfig'); 
-            cont.innerHTML = '';
-            Object.keys(methodsData).forEach(key => {
-                const m = methodsData[key];
-                cont.innerHTML += `
-                <div class="bg-black/40 p-3 rounded-2xl border border-white/5 space-y-2 text-right">
-                    <p class="text-[10px] text-zinc-500 font-bold uppercase italic">تعديل ${m.name}</p>
-                    <input id="admName_${key}" type="text" value="${m.name}" class="w-full bg-zinc-900 p-2 rounded-xl text-[10px] text-right">
-                    <input id="admMin_${key}" type="number" value="${m.min}" class="w-full bg-zinc-900 p-2 rounded-xl text-[10px] text-right">
-                    <button onclick="saveMethodUpdate('${key}')" class="w-full bg-blue-600/20 text-blue-400 py-2 rounded-xl text-[10px] font-black uppercase">حفظ التغييرات</button>
-                </div>`;
-            });
-        }
-
-        async function saveMethodUpdate(key) {
-            const name = document.getElementById('admName_'+key).value;
-            const min = parseFloat(document.getElementById('admMin_'+key).value);
-            const update = {}; 
-            update[`${key}.name`] = name; 
-            update[`${key}.min`] = min;
-            await db.collection("settings").doc("withdraw_methods").update(update);
-            alert("تم تحديث طريقة السحب!");
-        }
-
-        // --- Admin User Management ---
-        function loadAdminFullData() {
-            db.collection("withdrawals").where("status", "==", "pending").onSnapshot(snap => {
-                const list = document.getElementById('adminWithdrawalsList');
-                list.innerHTML = '';
-                snap.docs.forEach(doc => {
-                    const w = doc.data();
-                    list.innerHTML += `
-                    <div class="bg-black/60 p-4 rounded-2xl border border-white/10 text-right">
-                        <p class="text-xs font-black">${w.userName}</p>
-                        <p class="text-xs text-red-500 font-bold italic">$${w.amount} - ${w.methodName}</p>
-                        <p class="text-[9px] text-zinc-500 break-all">${w.wallet}</p>
-                        <div class="flex gap-2 mt-3">
-                            <button onclick="approveWithdraw('${doc.id}', '${w.uID}', ${w.amount})" class="flex-1 bg-green-600/20 text-green-500 py-2 rounded-xl text-[10px] font-black uppercase">قبول</button>
-                            <button onclick="rejectWithdraw('${doc.id}', '${w.uID}', ${w.amount})" class="flex-1 bg-red-600/20 text-red-500 py-2 rounded-xl text-[10px] font-black uppercase">رفض</button>
-                        </div>
-                    </div>`;
-                });
-            });
-
+        function loadAdminData() {
             db.collection("users").orderBy("createdAt", "desc").onSnapshot(snap => {
-                allUsers = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                // فلترة المستخدمين الحقيقيين فقط (الذين لديهم اسم وصورة)
+                allUsers = snap.docs.map(doc => ({id: doc.id, ...doc.data()})).filter(u => u.name && u.img);
                 filterUsers();
             });
         }
@@ -335,88 +276,147 @@
             const q = document.getElementById('userSearch').value.toLowerCase();
             const list = document.getElementById('adminUsersList');
             list.innerHTML = '';
-            
             allUsers.filter(u => u.name.toLowerCase().includes(q)).forEach(u => {
                 list.innerHTML += `
-                <div class="bg-zinc-900/40 p-4 rounded-2xl border ${u.isBanned ? 'border-red-600' : 'border-white/5'} flex flex-col gap-3 text-right">
-                    <div class="flex items-center justify-between">
-                         <span class="text-[10px] font-black text-red-500">$${(u.balance || 0).toFixed(4)}</span>
-                         <h4 class="text-xs font-black italic">${u.name}</h4>
+                <div class="bg-zinc-900 p-4 rounded-2xl border ${u.isBanned?'border-red-600':'border-white/5'} text-right relative pointer-events-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-red-500 font-black text-sm">$${(u.balance||0).toFixed(4)}</span>
+                        <div class="flex items-center gap-3">
+                             <div class="text-right">
+                                <p class="text-xs font-black text-white">${u.name}</p>
+                                <p class="text-[8px] text-zinc-500 font-bold">${u.id}</p>
+                             </div>
+                             <img src="${u.img}" class="w-10 h-10 rounded-full border border-red-600/30 object-cover shadow-lg">
+                        </div>
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <div class="flex gap-1">
-                            <input id="amt_${u.id}" type="number" step="0.1" placeholder="المبلغ" class="flex-1 bg-black p-2 rounded-lg text-[10px] text-right">
-                            <button onclick="manualBalanceChange('${u.id}', 'add')" class="bg-green-600 px-3 py-1.5 rounded-lg text-[9px] font-black text-white">إضافة</button>
-                            <button onclick="manualBalanceChange('${u.id}', 'sub')" class="bg-orange-600 px-3 py-1.5 rounded-lg text-[9px] font-black text-white">خصم</button>
-                        </div>
-                        <div class="flex gap-2 border-t border-white/5 pt-2">
-                            <button onclick="toggleUserBan('${u.id}', ${u.isBanned})" class="flex-1 bg-white/10 py-1.5 rounded-lg text-[9px] font-black text-white">${u.isBanned ? 'إلغاء حظر' : 'حظر الحساب'}</button>
-                            <button onclick="deleteUserAccount('${u.id}')" class="flex-1 bg-red-600/20 text-red-600 py-1.5 rounded-lg text-[9px] font-black">حذف نهائي</button>
-                        </div>
+                    <div class="flex gap-2 mb-2">
+                        <input id="amt_${u.id}" type="number" step="0.01" placeholder="المبلغ" class="flex-1 bg-black p-2 rounded-lg text-xs outline-none border border-white/5 focus:border-red-600 text-white">
+                        <button onclick="changeUserBalance('${u.id}', 'add')" class="bg-green-600/20 text-green-500 px-4 py-2 rounded-lg text-[10px] font-black">إضافة</button>
+                        <button onclick="changeUserBalance('${u.id}', 'sub')" class="bg-orange-600/20 text-orange-500 px-4 py-2 rounded-lg text-[10px] font-black">خصم</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleUserBan('${u.id}', ${u.isBanned})" class="flex-1 bg-white/5 py-2 rounded-lg text-[10px] font-black text-white">
+                            ${u.isBanned ? '✅ إلغاء الحظر' : '🚫 حظر العضو'}
+                        </button>
+                        <button onclick="openProfile('${u.id}')" class="flex-1 bg-blue-600/10 py-2 rounded-lg text-[10px] font-black text-blue-400">👀 عرض البروفايل</button>
                     </div>
                 </div>`;
             });
         }
 
-        async function manualBalanceChange(id, type) {
-            const val = parseFloat(document.getElementById(`amt_${id}`).value);
-            if(isNaN(val) || val <= 0) return alert("أدخل مبلغ صحيح!");
-            const change = type === 'add' ? val : -val;
-            await db.collection("users").doc(id).update({ 
-                balance: firebase.firestore.FieldValue.increment(change) 
+        function renderAdminVidsList() {
+            const list = document.getElementById('adminAllVidsList');
+            if(!list) return;
+            list.innerHTML = '';
+            allVideos.forEach(v => {
+                list.innerHTML += `
+                <div class="video-card">
+                    <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-12 rounded-lg object-cover">
+                    <div class="flex-1 text-right">
+                        <p class="text-[10px] font-bold text-white truncate">@${v.ownerName}</p>
+                        <p class="text-[8px] text-zinc-500">Likes: ${v.likes || 0} | Views: ${v.views || 0}</p>
+                    </div>
+                    <button onclick="deleteVid('${v.id}')" class="bg-red-600 p-2 rounded-lg text-[10px] font-black">حذف 🗑️</button>
+                </div>`;
             });
-            document.getElementById(`amt_${id}`).value = '';
-            alert("تم تحديث رصيد المستخدم!");
         }
 
-        async function toggleUserBan(id, current) { await db.collection("users").doc(id).update({ isBanned: !current }); }
-        async function deleteUserAccount(id) { if(confirm("حذف الحساب نهائياً؟")) await db.collection("users").doc(id).delete(); }
-        async function approveWithdraw(id, uid, amt) { await db.collection("withdrawals").doc(id).update({ status: 'approved' }); alert("تم القبول!"); }
-        async function rejectWithdraw(id, uid, amt) { 
-            await db.collection("withdrawals").doc(id).update({ status: 'rejected' });
-            await db.collection("users").doc(uid).update({ balance: firebase.firestore.FieldValue.increment(amt) });
-            alert("تم الرفض وإرجاع الرصيد!"); 
+        async function changeUserBalance(id, type) {
+            const input = document.getElementById('amt_'+id);
+            const val = parseFloat(input.value);
+            if(!val) return;
+            await db.collection("users").doc(id).update({ balance: firebase.firestore.FieldValue.increment(type==='add' ? val : -val) });
+            input.value = '';
         }
 
-        // --- Home Logic ---
+        async function toggleUserBan(id, curStatus) {
+            await db.collection("users").doc(id).update({ isBanned: !curStatus });
+        }
+
+        async function addWithdrawMethod() {
+            const name = document.getElementById('newMethodName').value;
+            const min = parseFloat(document.getElementById('newMethodMin').value);
+            if(name && min) {
+                await db.collection("withdraw_methods").add({ name, min });
+                document.getElementById('newMethodName').value = '';
+                document.getElementById('newMethodMin').value = '';
+            }
+        }
+
+        function renderAdminMethods() {
+            const list = document.getElementById('adminMethodsList');
+            list.innerHTML = '';
+            withdrawMethods.forEach(m => {
+                list.innerHTML += `<div class="bg-black p-3 rounded-xl flex justify-between items-center"><button onclick="deleteMethod('${m.id}')" class="text-red-500 text-xs font-bold">حذف</button> <span class="text-[10px] font-bold text-white">${m.name} (الحد: $${m.min})</span></div>`;
+            });
+        }
+
+        async function deleteMethod(id) { await db.collection("withdraw_methods").doc(id).delete(); }
+
+        async function addNewTask() {
+            const title = document.getElementById('taskTitle').value;
+            const link = document.getElementById('taskLink').value;
+            const reward = parseFloat(document.getElementById('taskReward').value);
+            if(title && link && reward) {
+                await db.collection("tasks").add({ title, link, reward, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                alert("تمت إضافة المهمة");
+            }
+        }
+
+        // --- وظائف النظام العام ---
         function renderHome() {
             const wrap = document.getElementById('videoWrapper'); 
             if (!wrap) return;
             const currentIdx = swiper ? swiper.activeIndex : 0;
             wrap.innerHTML = '';
             allVideos.forEach((v, i) => {
+                const isLiked = myLikes.includes(v.id);
                 wrap.innerHTML += `
                 <div class="swiper-slide relative bg-black">
-                    <div class="absolute inset-0"><div id="player-${i}"></div></div>
+                    <div class="absolute inset-0" id="player-container-${i}"><div id="player-${i}"></div></div>
                     <div class="absolute right-5 bottom-36 flex flex-col items-center gap-7 z-[2000]">
-                        <img src="${v.ownerImg || userImg}" class="w-14 h-14 rounded-full border-2 border-red-600 object-cover" onclick="openProfile('${v.ownerId}')">
-                        <div class="text-center text-white"><span class="text-3xl opacity-40">❤️</span><p class="text-xs font-black">${v.likes || 0}</p></div>
+                        <div class="relative">
+                            <img src="${v.ownerImg || userImg}" class="w-14 h-14 rounded-full border-2 border-red-600 object-cover shadow-2xl" onclick="openProfile('${v.ownerId}')">
+                            <div class="absolute -bottom-2 right-1/2 translate-x-1/2 bg-red-600 text-[8px] px-2 rounded-full font-black text-white">+</div>
+                        </div>
+                        <div class="text-center text-white cursor-pointer" onclick="toggleLike('${v.id}')">
+                            <span class="text-3xl transition-all like-btn ${isLiked ? 'active' : 'opacity-40'}">❤️</span>
+                            <p class="text-[10px] font-black mt-1">${v.likes || 0}</p>
+                        </div>
                     </div>
                     <div class="absolute bottom-28 right-8 text-right z-[2000] pointer-events-none">
-                        <h3 class="text-xl font-black italic text-white">@${v.ownerName}</h3>
+                        <h3 class="text-lg font-black italic text-white drop-shadow-lg">@${v.ownerName}</h3>
                     </div>
                 </div>`;
             });
             if(swiper) swiper.destroy();
             swiper = new Swiper(".mySwiper", { 
                 direction: "vertical", 
-                initialSlide: currentIdx, 
-                on: { slideChange: () => { stopVideos(); startTimerProcess(swiper.activeIndex); } } 
+                on: { slideChange: () => { stopVideos(); startVideo(swiper.activeIndex); } } 
             });
-            setTimeout(initPlayers, 500); 
-            startTimerProcess(currentIdx);
+            setTimeout(initPlayers, 200);
         }
 
         function initPlayers() { 
             allVideos.forEach((v, i) => { 
-                if (document.getElementById(`player-${i}`)) { 
-                    players[i] = new YT.Player(`player-${i}`, { 
-                        videoId: v.videoId, 
-                        playerVars: { autoplay: i === swiper.activeIndex ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1, rel: 0, iv_load_policy: 3 }, 
-                        events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startCountdown(i); } } 
-                    }); 
-                } 
+                players[i] = new YT.Player(`player-${i}`, { 
+                    videoId: v.videoId, 
+                    playerVars: { autoplay: i === 0 ? 1 : 0, controls: 0, modestbranding: 1, playsinline: 1, rel: 0 }, 
+                    events: { 'onStateChange': (e) => { if(e.data == 1 && i == swiper.activeIndex) startCountdown(i); } } 
+                }); 
             }); 
+        }
+
+        async function toggleLike(vidID) {
+            const userRef = db.collection("users").doc(uID);
+            const vidRef = db.collection("shared_videos").doc(vidID);
+            if(myLikes.includes(vidID)) {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayRemove(vidID) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(-1) });
+            } else {
+                await userRef.update({ likedVids: firebase.firestore.FieldValue.arrayUnion(vidID) });
+                await vidRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+            }
         }
 
         function startCountdown(idx) { 
@@ -436,146 +436,95 @@
                         balance: firebase.firestore.FieldValue.increment(0.0005), 
                         watchedVids: firebase.firestore.FieldValue.arrayUnion(v.id) 
                     }); 
-                    await db.collection("shared_videos").doc(v.id).update({ 
-                        views: firebase.firestore.FieldValue.increment(1) 
-                    }); 
+                    await db.collection("shared_videos").doc(v.id).update({ views: firebase.firestore.FieldValue.increment(1) }); 
                 } 
             }, 1000); 
         }
 
-        // --- Other App Functions ---
+        function renderUserWithdrawMethods() {
+            const list = document.getElementById('userMethodsList');
+            list.innerHTML = '';
+            withdrawMethods.forEach(m => {
+                list.innerHTML += `<div onclick="selectWithdrawMethod('${m.name}', ${m.min})" class="bg-zinc-900 p-4 rounded-2xl border border-white/5 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
+                    <span class="text-[10px] text-zinc-500 font-black">Min $${m.min}</span>
+                    <span class="font-black text-sm text-white">${m.name} 💳</span>
+                </div>`;
+            });
+        }
+
+        function selectWithdrawMethod(name, min) {
+            if(balance < min) { alert("رصيدك أقل من الحد الأدنى للسحب!"); return; }
+            document.getElementById('selMethodName').innerText = name;
+            document.getElementById('w-step-1').classList.add('hidden');
+            document.getElementById('w-step-2').classList.remove('hidden');
+        }
+
+        async function submitWithdrawRequest() {
+            const amount = parseFloat(document.getElementById('wAmount').value);
+            const wallet = document.getElementById('wWallet').value;
+            if(!amount || !wallet || amount > balance) { alert("تأكد من البيانات والرصيد!"); return; }
+            await db.collection("withdrawals").add({ 
+                uID, userName, amount, wallet, method: document.getElementById('selMethodName').innerText,
+                status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(-amount) });
+            alert("تم إرسال الطلب، سيتم المراجعة قريباً");
+            closeWithdrawModal();
+        }
+
+        function switchTab(t) { 
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page')); 
+            if(t === 'profile_self') { openProfile(uID); return; } 
+            const target = document.getElementById(t + 'Page');
+            if(target) target.classList.add('active-page'); 
+            stopVideos(); 
+        }
+
+        function openProfile(id) { 
+            document.getElementById('profilePage').classList.add('active-page'); 
+            db.collection("users").doc(id).get().then(doc => { 
+                if(!doc.exists) return;
+                const u = doc.data(); 
+                document.getElementById('uProfName').innerText = u.name; 
+                document.getElementById('uProfImg').src = u.img; 
+                document.getElementById('withdrawBtn').classList.toggle('hidden', id !== uID); 
+                const grid = document.getElementById('profileGrid'); grid.innerHTML = ''; 
+                allVideos.filter(v => v.ownerId === id).forEach(v => { 
+                    grid.innerHTML += `<div class="aspect-square bg-zinc-900 border border-white/5"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover"></div>`; 
+                });
+            }); 
+        }
+
+        function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); clearInterval(currentTimer); document.getElementById('videoTimer').classList.add('hidden'); }
+        function startVideo(idx) { if(players[idx]?.playVideo) players[idx].playVideo(); }
+        function showRewardPopup(v) { const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = `+$${v.toFixed(4)}`; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
+        function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'flex'; }
+        function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; backToMethods(); }
+        function backToMethods() { document.getElementById('w-step-1').classList.remove('hidden'); document.getElementById('w-step-2').classList.add('hidden'); }
+        function renderChart() {
+            const canvas = document.getElementById('tradingChart'); if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, { type: 'line', data: { labels: ['','','','',''], datasets: [{ data: [5, 12, 8, 15, 10], borderColor: '#dc2626', tension: 0.4, borderWeight: 3, pointRadius: 0, fill: true, backgroundColor: 'rgba(220, 38, 38, 0.1)' }] }, options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
+        }
+        function loadTasks() { db.collection("tasks").onSnapshot(s => { const list = document.getElementById('userTasksList'); if(!list) return; list.innerHTML = ''; s.docs.forEach(doc => { const t = doc.data(); const done = completedTasks.includes(doc.id); list.innerHTML += `<div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 flex items-center justify-between"><div class="text-right"><h4 class="font-black text-sm text-white">${t.title}</h4><p class="text-[10px] text-green-500 font-bold">$${t.reward}</p></div><button onclick="handleTask('${doc.id}','${t.link}',${t.reward})" class="${done?'bg-zinc-800 text-zinc-500':'bg-red-600 text-white'} px-6 py-2 rounded-xl text-[10px] font-black">${done?'تم':'تنفيذ'}</button></div>`; }); }); }
+        async function handleTask(id, link, rew) { if(completedTasks.includes(id)) return; window.open(link, '_blank'); setTimeout(async()=>{ await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(rew), completedTasks: firebase.firestore.FieldValue.arrayUnion(id) }); showRewardPopup(rew); }, 7000); }
+        function renderMyVideosList() { const list = document.getElementById('myVideosList'); if(!list) return; list.innerHTML = ''; allVideos.filter(v => v.ownerId === uID).forEach(v => { list.innerHTML += `<div class="video-card"><img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-12 rounded-lg object-cover flex-shrink-0"><div class="flex-1 text-[10px] text-zinc-400">Views: ${v.views||0} | Likes: ${v.likes||0}</div><button onclick="deleteVid('${v.id}')" class="bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-[10px] font-black">حذف</button></div>`; }); }
+        async function deleteVid(id) { if(confirm("حذف الفيديو نهائياً؟")) await db.collection("shared_videos").doc(id).delete(); }
         async function handlePublish() { 
             const val = document.getElementById('ytInput').value; 
             const vidId = val.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)?.[1]; 
             if(vidId) { 
                 await db.collection("shared_videos").add({ 
                     videoId: vidId, ownerId: uID, ownerName: userName, ownerImg: userImg, 
-                    views: 0, likes: 0, createdAt: new Date() 
+                    views: 0, likes: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp() 
                 }); 
                 document.getElementById('ytInput').value = ''; 
                 alert("تم النشر بنجاح!"); 
             } 
         }
 
-        function renderStats() { 
-            const mine = allVideos.filter(v => v.ownerId === uID); 
-            document.getElementById('totalViews').innerText = mine.reduce((a,b)=>a+(b.views||0),0); 
-            document.getElementById('totalLikes').innerText = mine.reduce((a,b)=>a+(b.likes||0),0); 
-            renderChart(); 
-        }
-
-        function switchTab(t) { 
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page')); 
-            if(t === 'profile_self') { openProfile(uID); return; } 
-            const target = document.getElementById(t + 'Page'); 
-            if(target) target.classList.add('active-page'); 
-            stopVideos(); 
-            if(t === 'home' && swiper) startTimerProcess(swiper.activeIndex); 
-        }
-
-        function openProfile(id) { 
-            activeProfileID = id; 
-            document.getElementById('profilePage').classList.add('active-page'); 
-            db.collection("users").doc(id).get().then(doc => { 
-                const u = doc.data(); 
-                document.getElementById('uProfName').innerText = u.name; 
-                document.getElementById('uProfImg').src = u.img; 
-                document.getElementById('withdrawBtn').classList.toggle('hidden', id !== uID); 
-                updateProfileGrid(); 
-            }); 
-        }
-
-        function updateProfileGrid() { 
-            const grid = document.getElementById('profileGrid'); 
-            grid.innerHTML = ''; 
-            allVideos.filter(v => v.ownerId === activeProfileID).forEach(v => { 
-                grid.innerHTML += `<div class="aspect-square bg-zinc-900 border border-white/5 overflow-hidden"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full h-full object-cover"></div>`; 
-            }); 
-        }
-
-        function loadTasks() { 
-            db.collection("tasks").onSnapshot(s => { 
-                const list = document.getElementById('userTasksList'); 
-                list.innerHTML = ''; 
-                s.docs.forEach(doc => { 
-                    const t = doc.data(); 
-                    const done = completedTasks.includes(doc.id); 
-                    list.innerHTML += `
-                    <div class="bg-zinc-900/60 p-5 rounded-3xl border border-white/5 flex items-center justify-between text-right">
-                        <div class="flex-1">
-                            <h4 class="font-black text-sm mb-1 text-white">${t.title}</h4>
-                            <p class="text-[10px] text-green-500 font-bold">$${t.reward}</p>
-                        </div>
-                        <button onclick="handleTask('${doc.id}','${t.link}',${t.reward})" class="${done?'bg-zinc-800 text-zinc-500':'bg-red-600 text-white'} px-5 py-2 rounded-xl text-[10px] font-black">${done?'مكتملة':'تنفيذ'}</button>
-                    </div>`; 
-                }); 
-            }); 
-        }
-
-        async function handleTask(id, link, rew) { 
-            if(completedTasks.includes(id)) return; 
-            window.open(link, '_blank'); 
-            setTimeout(async()=>{ 
-                await db.collection("users").doc(uID).update({ 
-                    balance: firebase.firestore.FieldValue.increment(rew), 
-                    completedTasks: firebase.firestore.FieldValue.arrayUnion(id) 
-                }); 
-                showRewardPopup(rew); 
-            }, 5000); 
-        }
-
-        async function addNewTask() { 
-            const t = document.getElementById('taskTitle').value;
-            const l = document.getElementById('taskLink').value;
-            const r = parseFloat(document.getElementById('taskReward').value); 
-            if(t && l && r) { 
-                await db.collection("tasks").add({ title: t, link: l, reward: r, createdAt: new Date() }); 
-                alert("تم إضافة المهمة!"); 
-                document.getElementById('taskTitle').value = '';
-                document.getElementById('taskLink').value = '';
-                document.getElementById('taskReward').value = '';
-            } 
-        }
-
-        function renderUserMethods() {
-            const list = document.getElementById('userMethodsList'); 
-            list.innerHTML = '';
-            Object.keys(methodsData).forEach(key => {
-                const m = methodsData[key];
-                list.innerHTML += `
-                <div onclick="selectMethod('${key}')" class="bg-zinc-900 p-4 rounded-2xl border border-white/5 flex justify-between items-center active:scale-95 transition-transform text-right">
-                    <span class="text-[10px] text-zinc-500 font-bold italic uppercase">الحد الأدنى: $${m.min}</span>
-                    <div class="flex items-center gap-3"><span class="font-black text-sm text-white">${m.name}</span><span class="text-xl">${m.icon}</span></div>
-                </div>`;
-            });
-        }
-
-        function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'flex'; backToMethods(); }
-        function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
-        function backToMethods() { document.getElementById('w-step-1').classList.remove('hidden'); document.getElementById('w-step-2').classList.add('hidden'); }
-        function selectMethod(key) {
-            selectedMethodKey = key;
-            document.getElementById('selMethodName').innerText = methodsData[key].name;
-            document.getElementById('w-step-1').classList.add('hidden');
-            document.getElementById('w-step-2').classList.remove('hidden');
-        }
-        async function submitWithdrawRequest() {
-            const amt = parseFloat(document.getElementById('wAmount').value);
-            const wallet = document.getElementById('wWallet').value;
-            const m = methodsData[selectedMethodKey];
-            if(!amt || !wallet || amt < m.min || amt > balance) return alert("خطأ في البيانات أو رصيد غير كافٍ!");
-            await db.collection("withdrawals").add({ uID, userName, amount: amt, wallet, methodName: m.name, status: 'pending', createdAt: new Date() });
-            await db.collection("users").doc(uID).update({ balance: firebase.firestore.FieldValue.increment(-amt) });
-            alert("تم إرسال طلب السحب!"); closeWithdrawModal();
-        }
-
-        function stopVideos() { Object.values(players).forEach(p => p.pauseVideo && p.pauseVideo()); clearInterval(currentTimer); }
-        function startTimerProcess(idx) { if(players[idx]?.playVideo) players[idx].playVideo(); }
-        function showRewardPopup(v) { const el = document.createElement('div'); el.className = 'reward-popup'; el.innerText = `+$${v.toFixed(4)}`; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
-        function renderChart() { const ctx = document.getElementById('tradingChart').getContext('2d'); if(window.myChart) window.myChart.destroy(); window.myChart = new Chart(ctx, { type: 'line', data: { labels: ['1','2','3','4','5'], datasets: [{ data: [10, 25, 15, 35, 20], borderColor: '#dc2626', tension: 0.4, borderWeight: 3, pointRadius: 0, fill: true }] }, options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } }); }
-        function renderMyVideosList() { const list = document.getElementById('myVideosList'); list.innerHTML = ''; allVideos.filter(v => v.ownerId === uID).forEach(v => { list.innerHTML += `<div class="bg-zinc-900/60 p-3 rounded-2xl flex items-center gap-4 border border-white/5 text-right"><img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" class="w-16 h-12 rounded-lg object-cover"><div class="flex-1 text-[10px] text-zinc-400">Views: ${v.views||0} | Likes: ${v.likes||0}</div><button onclick="deleteVid('${v.id}')" class="bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-[10px] font-black">حذف</button></div>`; }); }
-        async function deleteVid(id) { if(confirm("حذف الفيديو نهائياً؟")) await db.collection("shared_videos").doc(id).delete(); }
-        function onYouTubeIframeAPIReady() {} window.onload = init;
+        function onYouTubeIframeAPIReady() {}
+        window.onload = init;
     </script>
 </body>
 </html>
